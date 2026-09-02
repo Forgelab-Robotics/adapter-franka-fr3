@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-02T20:33:53+08:00",
+  "generator": "scripts/generate_mjcf.py",
+  "inputs": {
+    "assets/urdf/fr3v2_franka_hand.urdf": "07413c727fe0f51de63aa9eb5cfcba46b8a91dd1193c43ab84f0f7c222b3f45a",
+    "assets/urdf/fr3v2_franka_hand.srdf": "1e0f78b0dddc37350abcd543effa86434efd2e6bf3ef3b274023ff76d7e78049",
+    "assets/source/franka_description/robots/fr3v2/joint_limits.yaml": "34b78a3c1d500cfff3912750f6b4c19c677a223b03c22a074e49f0d5f1c1314c",
+    "scripts/generate_mjcf.py": "2bf2acb8e2192d27a3af8529d844cb35bae53bbfb9853ec40d432cf131cd372e"
+  },
+  "outputs": {
+    "assets/mjcf/fr3v2_franka_hand.xml": "9ccd3d38e7807781187734cd7ec283d9b3ec5bf09644b72129b6a869b14ca250",
+    "assets/mjcf/scene.xml": "d2794f9db39f11e5869b4e1273303b694d1cb7c39f1c832df14d1898cc4e077a"
+  },
+  "notes": [
+    "运动学、惯量、collision 与限位来自归档官方生成 URDF。",
+    "contact exclude 来自同版本官方 SRDF disable_collisions。",
+    "机器人 body 启用重力补偿，position actuator 使用速度反馈阻尼。",
+    "MuJoCo 不直接使用 DAE visual；MJCF 以同源 STL collision 和官方 finger primitive 兼作可视化。",
+    "gripper actuator 的控制量是两指总开口，范围 0..0.08 m。",
+    "scene 地面仅作坐标和尺度参照，不参与碰撞。"
+  ]
+}

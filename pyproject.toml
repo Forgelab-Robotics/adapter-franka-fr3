@@ -1,0 +1,42 @@
+[project]
+name = "franka-fr3"
+version = "0.1.0"
+description = "Franka FR3v2 with Franka Hand assets and Forge robot adapter"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
+authors = [{ name = "PhyAgentOS Contributors" }]
+dependencies = [
+  "dora-rs>=0.4.1",
+  "forge-common>=1.0.0,<2",
+  "forge-msgs>=1.0.0,<2",
+  "forge-robot>=1.0.0,<2",
+  "franky-control==2.0.0+libfranka.0.17.0",
+  "pyyaml>=6.0",
+  "typer>=0.25.1",
+]
+
+[dependency-groups]
+dev = [
+  "mujoco>=3.3.0",
+  "pytest>=8.0",
+]
+
+[[tool.uv.index]]
+name = "franky-robot-server-9"
+url = "https://timschneider42.github.io/franky/whl/by-robot-server-version/9/"
+explicit = true
+
+[tool.uv.sources]
+franky-control = { index = "franky-robot-server-9" }
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "robots_franka_fr3"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

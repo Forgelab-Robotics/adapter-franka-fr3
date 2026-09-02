@@ -1,0 +1,34 @@
+#! FR3v2 + Franka Hand：test_action_source → TaskRobot → MuJoCo
+#! 前置：export FORGE_RUNTIME_ROOT=/absolute/path/to/forge_runtime
+
+nodes:
+  - id: mujoco
+    path: ${FORGE_RUNTIME_ROOT}/packages/nodes/simulators/mujoco/main.py
+    inputs:
+      tick: dora/timer/millis/20
+      action: task_robot/action
+    outputs:
+      - proprio_state
+      - sim_status
+    args: --config simulator.yaml
+
+  - id: task_robot
+    path: ${FORGE_RUNTIME_ROOT}/packages/nodes/task_robot/main.py
+    inputs:
+      tick: dora/timer/millis/20
+      action: test_action_source/action
+      proprio_state: mujoco/proprio_state
+    outputs:
+      - action
+      - robot_0/action
+      - proprio_state
+    args: --config task_robot.yaml
+
+  - id: test_action_source
+    path: test_action_source.py
+    inputs:
+      tick: dora/timer/millis/100
+      proprio_state: task_robot/proprio_state
+    outputs:
+      - action
+    args: --target-seconds 2.0

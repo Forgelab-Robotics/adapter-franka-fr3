@@ -1,0 +1,41 @@
+# MuJoCo 节点：FR3v2 + 原生 Franka Hand（无相机）
+model_path: ../../../assets/mjcf/scene.xml
+control_hz: 50
+
+joints:
+  - { name: fr3v2_joint1, mode: position, unit: radians }
+  - { name: fr3v2_joint2, mode: position, unit: radians }
+  - { name: fr3v2_joint3, mode: position, unit: radians }
+  - { name: fr3v2_joint4, mode: position, unit: radians }
+  - { name: fr3v2_joint5, mode: position, unit: radians }
+  - { name: fr3v2_joint6, mode: position, unit: radians }
+  - { name: fr3v2_joint7, mode: position, unit: radians }
+  - name: gripper
+    mode: prismatic
+    unit: meters
+    # 逻辑状态是两指总开口，MJCF equality 保证两指同步。
+    state_from_joints: [fr3v2_finger_joint1, fr3v2_finger_joint2]
+    state_expr: sum
+    state_scale: 1.0
+
+robots:
+  - id: robot_0
+    prefix: ""
+    actuator_order:
+      - fr3v2_joint1
+      - fr3v2_joint2
+      - fr3v2_joint3
+      - fr3v2_joint4
+      - fr3v2_joint5
+      - fr3v2_joint6
+      - fr3v2_joint7
+      - gripper
+    joint_to_actuator:
+      fr3v2_joint1: fr3v2_joint1
+      fr3v2_joint2: fr3v2_joint2
+      fr3v2_joint3: fr3v2_joint3
+      fr3v2_joint4: fr3v2_joint4
+      fr3v2_joint5: fr3v2_joint5
+      fr3v2_joint6: fr3v2_joint6
+      fr3v2_joint7: fr3v2_joint7
+      gripper: gripper

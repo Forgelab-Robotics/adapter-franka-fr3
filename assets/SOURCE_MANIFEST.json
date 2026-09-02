@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "source": {
+    "name": "franka_description",
+    "url": "https://github.com/frankarobotics/franka_description.git",
+    "tag": "2.9.0",
+    "commit": "7aeeddc449edf8d62b594f9e36a81da53e7796f9",
+    "commit_date": "2026-08-17T10:29:44+02:00",
+    "license": "Apache-2.0（上游完整 LICENSE 同时保留 BSD-3-Clause 文本）"
+  },
+  "synced_at": "2026-09-02T19:57:58+08:00",
+  "runtime_modifications": [
+    {
+      "path": "assets/urdf/fr3v2_franka_hand.urdf",
+      "change": "仅将 package://franka_description/meshes/ 替换为 ../meshes/；结构、参数和数值不变"
+    },
+    {
+      "path": "assets/urdf/fr3v2_franka_hand.srdf",
+      "change": "无修改，逐字节复制"
+    }
+  ],
+  "files": {
+    "assets/source/franka_description/LICENSE": {
+      "sha256": "4b25434e6ec2012e28a484f1d7924a0fd1a8bf232c2be2d50d584d299d04d6d6",
+      "size": 12926
+    },
+    "assets/source/franka_description/NOTICE": {
+      "sha256": "13991525876741e3dc94c46e0afce111dc0a5c6156c89bbbefd06547b84738fd",
+      "size": 581
+    },
+    "assets/source/franka_description/end_effectors/franka_hand/inertials.yaml": {
+      "sha256": "6f09ae9ac8838e61d33167d0e6358fd3a61082b432028063805ff6625bc69207",
+      "size": 432
+    },
+    "assets/source/franka_description/package.xml": {
+      "sha256": "ff3d3c63eaccfb28b0d36b5f364be11b0b2406786a8db08253b3e384c436e456",
+      "size": 861
+    },
+    "assets/source/franka_description/robots/fr3v2/dynamics.yaml": {
+      "sha256": "e65e145114b431bd17cdebc58b88c43505f0658472cca6ffbc9c32b7a198f79b",
+      "size": 1283
+    },
+    "assets/source/franka_description/robots/fr3v2/inertials.yaml": {
+      "sha256": "e2ce373d28fde519aa586c3e9cf3fc4a7d7556abbe1faeec03352d5a38e0d979",
+      "size": 1605
+    },
+    "assets/source/franka_description/robots/fr3v2/joint_limits.yaml": {
+      "sha256": "34b78a3c1d500cfff3912750f6b4c19c677a223b03c22a074e49f0d5f1c1314c",
+      "size": 1577
+    },
+    "assets/source/franka_description/robots/fr3v2/kinematics.yaml": {
+      "sha256": "44326830a6773dd6611cdf9947045eeb3276ea4e3ca47a05272816c862c8e386",
+      "size": 831
+    },
+    "assets/source/franka_description/urdfs/fr3v2_franka_hand.srdf": {
+      "sha256": "1e0f78b0dddc37350abcd543effa86434efd2e6bf3ef3b274023ff76d7e78049",
+      "size": 5516
+    },
+    "assets/source/franka_description/urdfs/fr3v2_franka_hand.urdf": {
+      "sha256": "8c2d289e89ec3843add7d2244d85138b99faef09389859ea405ec95acd59872e",
+      "size": 27524
+    },
+    "assets/meshes/robot_ee/franka_hand_white/collision/hand.stl": {
+      "sha256": "94493e94f30fe940f2c8ca2f155c3bbe67bbff406d3edf5e261670d2f0f6e2ed",
+      "size": 10084
+    },
+    "assets/meshes/robot_ee/franka_hand_white/visual/finger.dae": {
+      "sha256": "12c7bc9b55ffd0d1d0e3442d3e213ecc4fbebbced15259a20195af464f871fcd",
+      "size": 52371
+    },
+    "assets/meshes/robot_ee/franka_hand_white/visual/hand.dae": {
+      "sha256": "1b50601d3157f810176aba6db7164d6bdb4ec8b6546a8a725baba2fa2a21c58a",
+      "size": 550371
+    },
+    "assets/meshes/robots/fr3v2/collision/link0.stl": {
+      "sha256": "b15c1ad04c251323e010641599d539d2569f91299195a90a7be1fd3ef501d093",
+      "size": 13884
+    },
+    "assets/meshes/robots/fr3v2/collision/link1.stl": {
+      "sha256": "7205ad2ebf6d2ad1755e13d0e9d56eaa66c5e534266ab6c0e54decde43d0cd89",
+      "size": 9784
+    },
+    "assets/meshes/robots/fr3v2/collision/link2.stl": {
+      "sha256": "633d6ecf3aaffc78cb2e1682885ef2a1b3fd53e54dfa5df08da1cda9d719e52b",
+      "size": 9784
+    },
+    "assets/meshes/robots/fr3v2/collision/link3.stl": {
+      "sha256": "f3d7b5c02d088fbd9b6be771c678132d957ca509c306058f1c14b6fbb6dfc119",
+      "size": 10184
+    },
+    "assets/meshes/robots/fr3v2/collision/link4.stl": {
+      "sha256": "501b122a84a96217c7d4246d2bfb72b3a65907ca8d908fbe3c11887f06beaa8b",
+      "size": 10284
+    },
+    "assets/meshes/robots/fr3v2/collision/link5.stl": {
+      "sha256": "293d21d6cfabd24f4855bf18313877d7b10cb957a8874952c2270f654dfd4867",
+      "size": 8884
+    },
+    "assets/meshes/robots/fr3v2/collision/link6.stl": {
+      "sha256": "26e9536ba35f18534dbf9d9d0a345182b8bf4b42db66aa0c5e6c776747baadee",
+      "size": 13184
+    },
+    "assets/meshes/robots/fr3v2/collision/link7.stl": {
+      "sha256": "f0001986a733293afb0a8142eadf5adc582397cfc05e538e60963fc3bb2b6e41",
+      "size": 16434
+    },
+    "assets/meshes/robots/fr3v2/visual/link0.dae": {
+      "sha256": "2942c6609deb1412eacaebdaef5674b8a370caeb13d39bc34dc7d4604b5dc1c0",
+      "size": 8284033
+    },
+    "assets/meshes/robots/fr3v2/visual/link1.dae": {
+      "sha256": "0017ad393987fe989aae6cd8a86f501ee928801d81084dd9c7435aa7ada5fed8",
+      "size": 1126308
+    },
+    "assets/meshes/robots/fr3v2/visual/link2.dae": {
+      "sha256": "69075fd922c83532ecd1b566dba5a6da22253378b32cc98dc83ab6f16092c2bd",
+      "size": 1201051
+    },
+    "assets/meshes/robots/fr3v2/visual/link3.dae": {
+      "sha256": "f60d3f5bbe778355ed3572ae934c3cf646d997e5c3677ec963257a095d94cc66",
+      "size": 1124234
+    },
+    "assets/meshes/robots/fr3v2/visual/link4.dae": {
+      "sha256": "cde9c576ddd543e2abbf18f9e70cdf2a3407640cf4a52ba503ccdde6a8f5aeab",
+      "size": 1211177
+    },
+    "assets/meshes/robots/fr3v2/visual/link5.dae": {
+      "sha256": "73ca429bff20d4f1e500837b6602ba4cba5d99b0896108c462c3404d12342c6c",
+      "size": 1447173
+    },
+    "assets/meshes/robots/fr3v2/visual/link6.dae": {
+      "sha256": "f362b51dd85a03efb2e0e4d542c535ef52975019d22ca20d79255a676fd3d1fb",
+      "size": 9441719
+    },
+    "assets/meshes/robots/fr3v2/visual/link7.dae": {
+      "sha256": "bbbf2024a9501df643273b7696dc4da8e007bbfef51299586e82e67e7e54eefd",
+      "size": 4772089
+    },
+    "assets/urdf/fr3v2_franka_hand.srdf": {
+      "sha256": "1e0f78b0dddc37350abcd543effa86434efd2e6bf3ef3b274023ff76d7e78049",
+      "size": 5516
+    },
+    "assets/urdf/fr3v2_franka_hand.urdf": {
+      "sha256": "07413c727fe0f51de63aa9eb5cfcba46b8a91dd1193c43ab84f0f7c222b3f45a",
+      "size": 27004
+    }
+  }
+}

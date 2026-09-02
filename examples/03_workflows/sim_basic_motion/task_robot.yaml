@@ -1,0 +1,31 @@
+# 与 simulator.yaml 使用完全相同的逻辑 action/proprio 契约。
+joints:
+  - { name: fr3v2_joint1, mode: position, unit: radians }
+  - { name: fr3v2_joint2, mode: position, unit: radians }
+  - { name: fr3v2_joint3, mode: position, unit: radians }
+  - { name: fr3v2_joint4, mode: position, unit: radians }
+  - { name: fr3v2_joint5, mode: position, unit: radians }
+  - { name: fr3v2_joint6, mode: position, unit: radians }
+  - { name: fr3v2_joint7, mode: position, unit: radians }
+  - { name: gripper, mode: prismatic, unit: meters }
+
+robots:
+  - id: robot_0
+    actuator_order:
+      - fr3v2_joint1
+      - fr3v2_joint2
+      - fr3v2_joint3
+      - fr3v2_joint4
+      - fr3v2_joint5
+      - fr3v2_joint6
+      - fr3v2_joint7
+      - gripper
+    joint_to_actuator:
+      fr3v2_joint1: fr3v2_joint1
+      fr3v2_joint2: fr3v2_joint2
+      fr3v2_joint3: fr3v2_joint3
+      fr3v2_joint4: fr3v2_joint4
+      fr3v2_joint5: fr3v2_joint5
+      fr3v2_joint6: fr3v2_joint6
+      fr3v2_joint7: fr3v2_joint7
+      gripper: gripper

@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+examples/**/out/
+
+# 现场配置、日志和大体积验收媒体不直接提交
+config/robot.yaml
+validation_output/*.mp4
+validation_output/*.mcap
+validation_output/*.log
+!validation_output/simulation_validation.log

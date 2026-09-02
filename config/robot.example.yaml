@@ -1,0 +1,59 @@
+schema_version: 1
+
+robot:
+  model: fr3v2
+  ip: "172.16.0.2"
+  system_image: "5.8.1"
+  robot_server_version: 9
+  verification_status: pending_on_hardware
+
+contract:
+  actuator_order:
+    - fr3v2_joint1
+    - fr3v2_joint2
+    - fr3v2_joint3
+    - fr3v2_joint4
+    - fr3v2_joint5
+    - fr3v2_joint6
+    - fr3v2_joint7
+    - gripper
+  arm_position_unit: radians
+  arm_velocity_unit: radians_per_second
+  arm_effort_unit: newton_meter
+  gripper_position_unit: meter_total_opening
+  joint_limits_file: ../assets/source/franka_description/robots/fr3v2/joint_limits.yaml
+
+positions:
+  home: &safe_pose
+    fr3v2_joint1: 0.0
+    fr3v2_joint2: -0.7853981633974483
+    fr3v2_joint3: 0.0
+    fr3v2_joint4: -2.356194490192345
+    fr3v2_joint5: 0.0
+    fr3v2_joint6: 1.5707963267948966
+    fr3v2_joint7: 0.7853981633974483
+    gripper: 0.08
+  reset: *safe_pose
+  verification_status: pending_on_hardware
+
+end_effector:
+  type: franka_hand
+  color: white
+  command_semantics: total_opening_width
+  min_width_m: 0.0
+  nominal_max_width_m: 0.08
+  require_homing_before_motion: true
+  verify_max_width_from_state: true
+
+frames:
+  flange: fr3v2_link8
+  tcp: fr3v2_hand_tcp
+  flange_to_tcp:
+    xyz_m: [0.0, 0.0, 0.1034]
+    rpy_rad: [0.0, 0.0, -0.7853981633974483]
+
+safety:
+  relative_dynamics_factor_initial: 0.05
+  require_fresh_state: true
+  require_preempt_rt: true
+  require_external_emergency_stop: true

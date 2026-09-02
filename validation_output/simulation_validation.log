@@ -1,0 +1,49 @@
+FR3v2 + Franka Hand MuJoCo simulation validation
+timestamp: 2026-09-02T20:36:08+08:00
+mujoco: 3.12.0
+scene: assets/mjcf/scene.xml
+model: nq=9, nu=8, njnt=9
+sweep_margin: max(0.05 rad, 10% joint range)
+[x] fr3v2_joint1_near_min error=0.000021 peak_velocity=1.952035
+[x] fr3v2_joint1_home_after_min error=0.000021 peak_velocity=1.952035
+[x] fr3v2_joint1_near_max error=0.000021 peak_velocity=1.952035
+[x] fr3v2_joint1_home_after_max error=0.000021 peak_velocity=1.952035
+[x] fr3v2_joint2_near_min error=0.000002 peak_velocity=1.026646
+[x] fr3v2_joint2_home_after_min error=0.000003 peak_velocity=1.026592
+[x] fr3v2_joint2_near_max error=0.004483 peak_velocity=1.963835
+[x] fr3v2_joint2_home_after_max error=0.000003 peak_velocity=2.012084
+[x] fr3v2_joint3_near_min error=0.000012 peak_velocity=1.957225
+[x] fr3v2_joint3_home_after_min error=0.000015 peak_velocity=1.957490
+[x] fr3v2_joint3_near_max error=0.000012 peak_velocity=1.957235
+[x] fr3v2_joint3_home_after_max error=0.000015 peak_velocity=1.957494
+[x] fr3v2_joint4_near_min error=0.000007 peak_velocity=0.630071
+[x] fr3v2_joint4_home_after_min error=0.000017 peak_velocity=0.629681
+[x] fr3v2_joint4_near_max error=0.000169 peak_velocity=1.952518
+[x] fr3v2_joint4_home_after_max error=0.000010 peak_velocity=1.954276
+[x] fr3v2_joint5_near_min error=0.000034 peak_velocity=3.354187
+[x] fr3v2_joint5_home_after_min error=0.000034 peak_velocity=3.354234
+[x] fr3v2_joint5_near_max error=0.000034 peak_velocity=3.354158
+[x] fr3v2_joint5_home_after_max error=0.000034 peak_velocity=3.354211
+[x] fr3v2_joint6_near_min error=0.000025 peak_velocity=1.039204
+[x] fr3v2_joint6_home_after_min error=0.000025 peak_velocity=1.039183
+[x] fr3v2_joint6_near_max error=0.000031 peak_velocity=3.078197
+[x] fr3v2_joint6_home_after_max error=0.000031 peak_velocity=3.078192
+[x] fr3v2_joint7_near_min error=0.000035 peak_velocity=3.865011
+[x] fr3v2_joint7_home_after_min error=0.000034 peak_velocity=3.865011
+[x] fr3v2_joint7_near_max error=0.000031 peak_velocity=2.411755
+[x] fr3v2_joint7_home_after_max error=0.000031 peak_velocity=2.411755
+[x] gripper_open error=0.000000 peak_velocity=0.000000
+[x] gripper_half error=0.000075 peak_velocity=0.028965
+[x] gripper_closed error=0.000075 peak_velocity=0.028966
+[x] gripper_reopen error=0.000082 peak_velocity=0.057931
+[x] long_stability 10.0s
+[x] repeated_action
+[x] rapid_alternating_action
+[x] reset_and_restart
+[x] rejected_nan_action
+[x] rejected_inf_action
+[x] rejected_over_limit
+[x] rejected_unknown_joint
+[x] rejected_wrong_order
+[x] gripper_total_opening_semantics
+RESULT: PASS
