@@ -7,6 +7,8 @@ from robots_franka_fr3.contract import (
     RESET_POSITION,
     load_joint_limits,
 )
+from robots_franka_fr3.driver import FrankaFR3Driver
+from robots_franka_fr3.backend import BackendState, FakeBackend, FrankyBackend
 
 __all__ = [
     "ACTUATOR_ORDER",
@@ -14,6 +16,10 @@ __all__ = [
     "HOME_POSITION",
     "RESET_POSITION",
     "load_joint_limits",
+    "FrankaFR3Driver",
+    "BackendState",
+    "FakeBackend",
+    "FrankyBackend",
 ]
 
 __version__ = "0.1.0"

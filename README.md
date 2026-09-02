@@ -1,8 +1,8 @@
 # Franka FR3v2 + 原生 Franka Hand
 
-本目录接入 **Franka FR3v2 七轴机械臂 + white Franka Hand**。当前已完成
-资产归档、构型契约、原生 MuJoCo 仿真验收和 Forge/Dora 仿真 workflow 配置；
-Franky/Forge 真机驱动与 Gello 遥操按 [PLAN.md](PLAN.md) 后续阶段实施。
+本目录接入 **Franka FR3v2 七轴机械臂 + white Franka Hand**。已完成资产归档、
+构型契约、原生 MuJoCo 仿真验收，并提供 Franky/Forge 真机驱动、SDK 最小测试、
+fake backend 和真机 workflow 骨架。当前仍未连接真机，所有真机验收项保持待现场确认。
 
 > [!WARNING]
 > 本项目未来可向真机发送动作，但不是功能安全系统。当前配置中的 Robot IP、
@@ -119,7 +119,10 @@ uv run --frozen python -m unittest discover -s tests -v
 
 ## 当前边界
 
-- 尚未执行真机连接或动作测试。
+- 尚未执行真机连接或动作测试；`--backend fake` 是默认且唯一的 CI 后端。
+- Franky 驱动和 CLI：见 `examples/01_sdk_tests/README.md`；Dora 节点入口为
+  `src/robots_franka_fr3/node.py`，真机 workflow 见
+  `examples/03_workflows/real_basic_motion/`。
 - `172.16.0.2`、System Image `5.8.1`、FR3v2 Type Label 和实际 Hand
   状态均标为待现场确认。
 - MJCF 当前用官方 collision STL 和 finger primitive 兼作可视化，保留的

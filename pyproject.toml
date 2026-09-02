@@ -38,5 +38,9 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "robots_franka_fr3"
 
+[project.scripts]
+robots-franka-fr3 = "robots_franka_fr3.cli:main"
+robots_franka_fr3 = "robots_franka_fr3.cli:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
