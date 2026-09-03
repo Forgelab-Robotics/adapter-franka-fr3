@@ -162,19 +162,20 @@ franka_fr3/
 
 ### 3.2 Forge Robot Driver 与 Dora 节点
 
-- [ ] 实现 `FrankaFR3Driver(BaseRobotDriver)`：connect/disconnect、fresh state、
+- [x] 实现 `FrankaFR3Driver(BaseRobotDriver)`：connect/disconnect、fresh state、
   send action、stop、error recovery、gripper、超时和结构化日志。
-- [ ] 根据锁定 Franky 版本选择并验证连续目标的实现方式；若 SDK move 调用是
+- [x] 根据锁定 Franky 版本选择并验证连续目标的实现方式；若 SDK move 调用是
   阻塞/轨迹级 API，则增加命令合并、速率限制和互斥，禁止每个 Dora tick
   无界创建运动任务。
-- [ ] 支持稀疏 action：未出现的关节保持最近目标；首次命令从 fresh state 初始化缓存。
-- [ ] 所有 action 先检查 finite、名称和 mode，再执行位置/速度/加速度/jerk margin、
+- [x] action 默认表示相对于 connect/recover fresh state 的偏移；支持稀疏 action，
+  未出现的关节保持最近目标，周期性重复相同偏移不会累加。
+- [x] 所有 action 先检查 finite、名称和 mode，再执行位置/速度/加速度/jerk margin、
   每周期最大步长和夹爪范围检查；拒绝未知关节和过期命令。
-- [ ] 将 Franky 异常转换成清晰日志与安全停止；断连后不得继续发布伪新鲜状态，
+- [x] 将 Franky 异常转换成清晰日志与安全停止；断连后不得继续发布伪新鲜状态，
   reconnect 必须显式执行。
-- [ ] 提供 CLI、`robot.example.yaml`、Dora state/action/end-effector 单节点测试，
+- [x] 提供 CLI、`robot.example.yaml`、Dora state/action/end-effector 单节点测试，
   以及 `real_basic_motion` workflow。
-- [ ] 用 fake/mock backend 覆盖 CI：顺序、单位、裁剪、稀疏命令、过期反馈、
+- [x] 用 fake/mock backend 覆盖 CI：顺序、单位、越界拒绝、稀疏命令、过期反馈、
   超时、断连、夹爪宽度转换和生命周期；CI 绝不连接或移动真机。
 
 ### 3.3 分级真机验收

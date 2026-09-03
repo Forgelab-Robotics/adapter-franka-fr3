@@ -69,7 +69,7 @@ cd franka_fr3
 uv sync --all-groups --frozen
 uv run python -c "from importlib.metadata import version; print(version('franky-control'))"
 uv run python scripts/validate_assets.py
-uv run python -m unittest discover -s tests -v
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run pytest -q
 ```
 
 此环境可做无硬件资产和 API 开发。执行 Franky 真机控制前还必须满足：
@@ -121,9 +121,39 @@ uv run --frozen python -m unittest discover -s tests -v
 检查结果见
 [`JOINT_SWEEP_CHECKLIST.md`](examples/03_workflows/simulation/JOINT_SWEEP_CHECKLIST.md)。
 
+## Forge / Dora 驱动
+
+`FrankaFR3Driver` 实现 Forge `BaseRobotDriver`。Dora 节点接受 `tick` 和 sparse
+`action`，发布标准 `state`；Franka Hand 通过
+`JointCommand(name=["gripper"], position=[开口偏移米值])` 使用同一 action 接口。
+默认情况下，`JointCommand.position` 是相对于 connect/recover 时 fresh state 的
+偏移，而不是绝对关节位姿。例如启动时 J1 为 `-0.4 rad`，发送 J1 `+0.02` 的绝对
+SDK 目标为 `-0.38 rad`；周期性重发仍是 `-0.38 rad`，不会不断累加。
+
+锁定的 Franky 2.0 `JointMotion` 是轨迹级 API。驱动只允许一个 arm motion 和一个
+Hand future 同时活动；运动期间的新目标覆盖单个 pending slot，前一运动结束后才提交
+最新目标。默认 worker 周期为 `20 ms`、最短 SDK 提交间隔为 `50 ms`，Dora tick
+不会无界创建 Franky motion。
+
+所有 action 均 fail-closed：只接受纯 position payload，并在相对偏移换算为 SDK
+绝对目标后验证 finite、名称、官方位置限位内侧 `0.05 rad`、相邻目标最大
+`0.05 rad` 和 Hand 实测范围。越界不会被
+静默裁剪；驱动会停止 arm/Hand、锁存错误，并由调用方显式 recovery 或 reconnect。
+velocity/acceleration/jerk 分别通过 Franky `RelativeDynamicsFactor` 限制，默认均为
+`0.05`。完整参数见 [`config/robot.example.yaml`](config/robot.example.yaml)。
+
+无硬件 Dora/driver 验收：
+
+```bash
+PYTHONPATH=src python examples/02_dora_tests/smoke_fake_driver.py
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run pytest -q \
+  tests/test_backend_driver.py tests/test_franky_backend.py tests/test_dora_node.py
+```
+
 ## 当前边界
 
-- 尚未执行真机连接或动作测试；`--backend fake` 是默认且唯一的 CI 后端。
+- `--backend fake` 是默认且唯一的 CI 后端；3.2 已由 fake/mock 验收，Dora 真机
+  连续运行、断线和现场动作仍属于 3.3 L4。
 - Franky 驱动和 CLI：见 `examples/01_sdk_tests/README.md`；Dora 节点入口为
   `src/robots_franka_fr3/node.py`，真机 workflow 见
   `examples/03_workflows/real_basic_motion/`。

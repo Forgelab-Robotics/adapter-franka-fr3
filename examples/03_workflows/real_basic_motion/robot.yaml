@@ -1,7 +1,28 @@
-backend: fake
-ip: "172.16.0.2"
-dynamics_factor: 0.05
-action_timeout_s: 0.5
-state_timeout_s: 0.5
-max_step_rad: 0.05
-allow_real_motion: false
+robot:
+  backend: franky
+  ip: "172.16.0.2"
+
+safety:
+  relative_dynamics_factors:
+    velocity: 0.05
+    acceleration: 0.05
+    jerk: 0.05
+  position_margin_rad: 0.05
+
+control:
+  action_timeout_s: 0.5
+  state_timeout_s: 0.5
+  motion_timeout_s: 10.0
+  gripper_timeout_s: 5.0
+  homing_timeout_s: 15.0
+  worker_join_timeout_s: 2.0
+  worker_period_s: 0.02
+  min_command_interval_s: 0.05
+  # position 是相对于本次 connect/recover fresh state 的偏移；重复 action 不累加。
+  position_command_semantics: relative
+  max_step_rad: 0.5
+  gripper_speed_mps: 0.03
+  gripper_force_n: 50.0
+  # 本 workflow 只动 J1；避免连接阶段执行 Hand homing。
+  require_homing: false
+  allow_real_motion: true

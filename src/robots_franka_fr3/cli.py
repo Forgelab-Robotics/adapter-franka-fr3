@@ -24,13 +24,19 @@ def _backend(args: argparse.Namespace) -> RobotBackend:
     )
 
 
-def _driver(args: argparse.Namespace, *, require_homing: bool | None = None) -> FrankaFR3Driver:
+def _driver(
+    args: argparse.Namespace,
+    *,
+    require_homing: bool | None = None,
+    position_command_semantics: str = "absolute",
+) -> FrankaFR3Driver:
     backend = _backend(args)
     if require_homing is None:
         require_homing = not args.no_homing
     return FrankaFR3Driver(ip=args.ip, backend=backend, dynamics_factor=args.dynamics_factor,
                            max_step_rad=args.max_step_rad, require_homing=require_homing,
-                           gripper_speed=args.gripper_speed, gripper_force=args.gripper_force)
+                           gripper_speed=args.gripper_speed, gripper_force=args.gripper_force,
+                           position_command_semantics=position_command_semantics)
 
 
 class _Recorder:
@@ -205,7 +211,7 @@ def _run_joint_range_phase(args: argparse.Namespace, recorder: _Recorder, *,
                         f"检测到当前错误 {diagnostics.get('current_errors')}；"
                         "如已排除故障源，可添加 --recover-on-retry"
                     )
-                recovered = driver.backend.recover()
+                recovered = driver.recover()
                 recorder.emit("joint_range_recover", joint=joint, phase=phase,
                               attempt=attempt, sdk_result=recovered,
                               before=diagnostics,
@@ -517,7 +523,18 @@ def recover(args: argparse.Namespace) -> int:
 
 
 def run_node(args: argparse.Namespace) -> int:
-    driver = _driver(args)
+    if args.config:
+        from .node import build_driver_from_config, load_robot_config
+
+        config = load_robot_config(args.config)
+        backend_name = config.get("backend", (config.get("robot", {}) or {}).get("backend", "fake"))
+        if backend_name == "franky" and not args.execute:
+            raise SystemExit("CLI 启动 Franky Dora 节点必须显式添加 --execute")
+        driver = build_driver_from_config(config)
+    else:
+        if args.backend == "franky" and not args.execute:
+            raise SystemExit("CLI 启动 Franky Dora 节点必须显式添加 --execute")
+        driver = _driver(args, position_command_semantics="relative")
     driver.connect()
     try:
         from forge_robot.node_runner import run_dora_robot_node
@@ -615,8 +632,12 @@ def parser() -> argparse.ArgumentParser:
     recovery.add_argument("--execute", action="store_true",
                           help="确认故障源已移除并允许调用自动恢复")
 
-    sub.choices["run"].add_argument("--no-homing", action="store_true",
+    run = sub.choices["run"]
+    run.add_argument("--no-homing", action="store_true",
                                     help="启动 Dora 节点时跳过 Hand homing")
+    run.add_argument("--config", help="与独立 Dora 节点共用的 robot YAML")
+    run.add_argument("--execute", action="store_true",
+                     help="使用 Franky backend 时额外确认允许真机运行")
     return p
 
 

@@ -5,18 +5,15 @@ nodes:
       tick: dora/timer/millis/20
       action: test_action_source/action
     outputs:
-      - proprio_state
+      - state
     args: --config robot.yaml
 
   - id: test_action_source
     path: ${FORGE_RUNTIME_ROOT}/packages/nodes/test_action_source/main.py
     inputs:
       tick: dora/timer/millis/200
-      proprio_state: franka_fr3/proprio_state
+      proprio_state: franka_fr3/state
     outputs:
       - action
     args: >-
-      --joint-order fr3v2_joint1 fr3v2_joint2 fr3v2_joint3 fr3v2_joint4
-      fr3v2_joint5 fr3v2_joint6 fr3v2_joint7 gripper --mode target
-      --target 0.02 -0.7853981633974483 0.0 -2.356194490192345
-      0.0 1.5707963267948966 0.7853981633974483 0.08
+      --joint-order fr3v2_joint1 --mode target --target 0.2

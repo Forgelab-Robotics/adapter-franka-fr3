@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import unittest
 from pathlib import Path
 
@@ -59,6 +60,21 @@ class SimulationWorkflowTest(unittest.TestCase):
             nodes["task_robot"]["inputs"]["proprio_state"],
             "mujoco/proprio_state",
         )
+
+    def test_action_source_anchors_offsets_to_first_proprio(self) -> None:
+        source = WORKFLOW / "test_action_source.py"
+        spec = importlib.util.spec_from_file_location("fr3_sim_action_source", source)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        reference = (0.3, -0.7, 0.1, -2.3, 0.0, 1.5, 0.7, 0.04)
+        positive = module.command_for_elapsed(1.1, 1.0, reference)
+        repeated = module.command_for_elapsed(1.9, 1.0, reference)
+        returned = module.command_for_elapsed(2.1, 1.0, reference)
+        self.assertAlmostEqual(positive.position[0], 0.35)
+        self.assertEqual(positive.position, repeated.position)
+        self.assertEqual(tuple(returned.position), reference)
 
     def test_model_path_resolves_inside_repository(self) -> None:
         path = (WORKFLOW / self.simulator["model_path"]).resolve()

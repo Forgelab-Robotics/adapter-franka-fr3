@@ -16,3 +16,9 @@ uv run python scripts/validate_assets.py
 
 `verification_status: pending_on_hardware` 只能在完成对应真机验收并留下记录后改为
 `verified`。
+
+驱动配置按 `robot`、`safety`、`control` 分区。旧版顶层 timeout 和标量
+`dynamics_factor` 仍可读取；新配置应使用独立的 velocity/acceleration/jerk
+`relative_dynamics_factors`。`position_command_semantics` 默认为 `relative`：
+`JointCommand.position` 是相对于本次 connect/recover fresh state 的偏移，重复相同
+action 不累加。`absolute` 仅为显式兼容模式。`allow_real_motion` 默认必须为 false。

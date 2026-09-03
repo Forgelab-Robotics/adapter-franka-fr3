@@ -1,4 +1,4 @@
-"""恢复到 HOME_POSITION = [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398] 的测试程序。"""
+"""验证 action 以 fresh HOME_POSITION 为参考零点。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from robots_franka_fr3 import FrankaFR3Driver
 from robots_franka_fr3.contract import ACTUATOR_ORDER, HOME_POSITION
 
 
-TARGET_POSITION = [0.0, -0.785398, 0.0, -2.356194, 0.0, 1.570796, 0.785398]
+TARGET_OFFSET = [0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 
 def test_recover_to_home() -> None:
@@ -20,15 +20,15 @@ def test_recover_to_home() -> None:
         print(f"当前关节位置: {state.position[:7]}")
         print(f"当前夹爪宽度: {state.position[7]}")
 
-        # 发送目标位置命令
+        # 发送相对于 connect fresh state 的偏移命令。
         from forge_msgs import JointCommand
         command = JointCommand(
             name=list(ACTUATOR_ORDER),
-            position=TARGET_POSITION + [0.08],  # 加上夹爪宽度
+            position=TARGET_OFFSET + [0.0],
             mode="position",
         )
         driver.set_command(command)
-        print(f"已发送目标位置: {TARGET_POSITION}")
+        print(f"已发送相对偏移: {TARGET_OFFSET}")
 
         # 等待状态更新
         import time
@@ -41,7 +41,8 @@ def test_recover_to_home() -> None:
 
         # 验证位置（使用近似比较）
         import math
-        for i, (actual, target) in enumerate(zip(state.position[:7], TARGET_POSITION)):
+        expected = [value + offset for value, offset in zip(HOME_POSITION[:7], TARGET_OFFSET)]
+        for i, (actual, target) in enumerate(zip(state.position[:7], expected)):
             assert math.isclose(actual, target, rel_tol=1e-5), f"关节{i+1}位置不匹配: {actual} != {target}"
         print("✓ 位置验证通过")
 

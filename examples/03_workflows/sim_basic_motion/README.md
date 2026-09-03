@@ -4,6 +4,11 @@
 `fr3v2_joint1`～`fr3v2_joint7`、`gripper`；机械臂单位为 rad，`gripper`
 是两指总开口，单位 m，范围 `0～0.08`。
 
+Dora 测试动作源不依赖配置中的绝对 home：它把首个 fresh `proprio_state` 固定为
+启动参考姿态，再依次请求 J1 的 `0 → +0.05 → 0 → -0.05 rad` 相对偏移。由于
+TaskRobot/MuJoCo 的底层 position actuator 接受绝对目标，转换只在动作源内部完成；
+上层测试轨迹始终以启动姿态为零点。
+
 ## 1. 原生 MuJoCo 验收（推荐先运行）
 
 ```bash

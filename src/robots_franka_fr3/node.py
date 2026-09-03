@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
+from typing import Any, Mapping
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -13,44 +15,84 @@ import yaml
 
 from forge_robot.node_runner import run_dora_robot_node
 
-from robots_franka_fr3.backend import FakeBackend, FrankyBackend
+from robots_franka_fr3.backend import DynamicsFactors, FakeBackend, FrankyBackend
 from robots_franka_fr3.driver import FrankaFR3Driver
+
+
+def load_robot_config(path: str | Path) -> dict[str, Any]:
+    config = yaml.safe_load(Path(path).read_text()) or {}
+    if not isinstance(config, dict):
+        raise ValueError("robot config 顶层必须是 mapping")
+    return config
+
+
+def _value(config: Mapping[str, Any], section: Mapping[str, Any], key: str, default: Any) -> Any:
+    return config[key] if key in config else section.get(key, default)
+
+
+def build_driver_from_config(config: Mapping[str, Any]) -> FrankaFR3Driver:
+    """兼容旧顶层字段，并以 robot/control/safety 分区为标准。"""
+    robot = config.get("robot", {}) or {}
+    control = config.get("control", {}) or {}
+    safety = config.get("safety", {}) or {}
+    if not all(isinstance(item, Mapping) for item in (robot, control, safety)):
+        raise ValueError("robot/control/safety 配置必须是 mapping")
+    backend_name = _value(config, robot, "backend", "fake")
+    allow_real = _value(config, control, "allow_real_motion", False)
+    if backend_name not in ("fake", "franky"):
+        raise ValueError(f"不支持的 backend：{backend_name}")
+    if backend_name == "franky" and not allow_real:
+        raise PermissionError("backend=franky 必须显式设置 allow_real_motion=true")
+    ip = str(_value(config, robot, "ip", "172.16.0.2"))
+    raw_factors = config.get(
+        "dynamics_factors",
+        safety.get(
+            "relative_dynamics_factors",
+            config.get("dynamics_factor", safety.get("relative_dynamics_factor_initial", 0.05)),
+        ),
+    )
+    factors = DynamicsFactors.coerce(raw_factors)
+    backend = FakeBackend() if backend_name == "fake" else FrankyBackend(
+        ip,
+        dynamics_factor=factors,
+        expected_gripper_server_version=robot.get("gripper_server_version"),
+    )
+    return FrankaFR3Driver(
+        ip=ip,
+        backend=backend,
+        dynamics_factor=factors,
+        action_timeout=float(_value(config, control, "action_timeout_s", 0.5)),
+        state_timeout=float(_value(config, control, "state_timeout_s", 0.5)),
+        motion_timeout=float(_value(config, control, "motion_timeout_s", 10.0)),
+        gripper_timeout=float(_value(config, control, "gripper_timeout_s", 5.0)),
+        homing_timeout=float(_value(config, control, "homing_timeout_s", 15.0)),
+        worker_join_timeout=float(_value(config, control, "worker_join_timeout_s", 2.0)),
+        worker_period=float(_value(config, control, "worker_period_s", 0.02)),
+        min_command_interval=float(_value(config, control, "min_command_interval_s", 0.05)),
+        position_margin_rad=float(_value(config, safety, "position_margin_rad", 0.05)),
+        max_step_rad=float(_value(config, control, "max_step_rad", 0.05)),
+        gripper_speed=float(_value(config, control, "gripper_speed_mps", 0.03)),
+        gripper_force=float(_value(config, control, "gripper_force_n", 50.0)),
+        require_homing=bool(_value(config, control, "require_homing", True)),
+        position_command_semantics=str(
+            _value(config, control, "position_command_semantics", "relative")
+        ),
+    )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
+    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
-    config = yaml.safe_load(Path(args.config).read_text()) or {}
-    robot_config = config.get("robot", {})
-    control = config.get("control", {})
-    safety = config.get("safety", {})
-    backend_name = config.get("backend", robot_config.get("backend", "fake"))
-    allow_real = config.get("allow_real_motion", control.get("allow_real_motion", False))
-    if backend_name not in ("fake", "franky"):
-        raise SystemExit(f"不支持的 backend：{backend_name}")
-    if backend_name == "franky" and not allow_real:
-        raise SystemExit("backend=franky 必须显式设置 allow_real_motion=true")
-    ip = config.get("ip", robot_config.get("ip", "172.16.0.2"))
-    dynamics_factor = float(config.get("dynamics_factor", safety.get("relative_dynamics_factor_initial", 0.05)))
-    backend = FakeBackend() if backend_name == "fake" else FrankyBackend(
-        ip,
-        dynamics_factor=dynamics_factor,
-        expected_gripper_server_version=robot_config.get("gripper_server_version"),
-        )
-    driver = FrankaFR3Driver(
-        ip=ip,
-        backend=backend,
-        dynamics_factor=dynamics_factor,
-        action_timeout=float(config.get("action_timeout_s", control.get("action_timeout_s", 0.5))),
-        state_timeout=float(config.get("state_timeout_s", control.get("state_timeout_s", 0.5))),
-        max_step_rad=float(config.get("max_step_rad", control.get("max_step_rad", 0.05))),
-        gripper_speed=float(config.get("gripper_speed_mps", control.get("gripper_speed_mps", 0.03))),
-        gripper_force=float(config.get("gripper_force_n", control.get("gripper_force_n", 50.0))),
-        auto_connect=True,
-    )
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
     try:
-        return run_dora_robot_node(driver, joint_order=driver.joint_order)
+        driver = build_driver_from_config(load_robot_config(args.config))
+    except (OSError, ValueError, PermissionError) as exc:
+        parser.error(str(exc))
+    driver.connect()
+    try:
+        return run_dora_robot_node(driver, joint_order=driver.joint_order, debug=args.debug)
     finally:
         driver.disconnect()
 

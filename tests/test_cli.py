@@ -17,6 +17,7 @@ from robots_franka_fr3.cli import (
     parser,
     read_state,
     recover,
+    run_node,
     safety_stop,
 )
 from robots_franka_fr3.contract import ACTUATOR_ORDER
@@ -256,6 +257,11 @@ class AcceptanceCommandTest(unittest.TestCase):
         with patch("robots_franka_fr3.cli._backend", return_value=backend):
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(observe_safety(args), 0)
+
+    def test_run_real_node_requires_execute_gate(self) -> None:
+        args = self.parse("run", "--backend", "franky")
+        with self.assertRaisesRegex(SystemExit, "--execute"):
+            run_node(args)
 
 
 if __name__ == "__main__":
