@@ -22,7 +22,6 @@ class FrankaFR3Driver(BaseRobotDriver):
                  state_timeout: float = 0.5, max_step_rad: float = 0.05,
                  gripper_speed: float = 0.03, gripper_force: float = 50.0,
                  require_homing: bool = True, auto_connect: bool = False,
-                 expected_server_version: int | None = None,
                  limits: Mapping[str, Mapping[str, object]] | None = None) -> None:
         self.ip = ip
         self.backend = backend or FakeBackend()
@@ -33,7 +32,6 @@ class FrankaFR3Driver(BaseRobotDriver):
         self.gripper_speed = float(gripper_speed)
         self.gripper_force = float(gripper_force)
         self.require_homing = bool(require_homing)
-        self.expected_server_version = expected_server_version
         self.limits = dict(limits or load_joint_limits())
         self._connected = False
         self._last_state = None
@@ -149,9 +147,9 @@ class FrankaFR3Driver(BaseRobotDriver):
     send_action = set_command
     emergency_stop = stop
 
-    def recover(self) -> None:
+    def recover(self) -> bool:
         self._require_connected()
-        self.backend.recover()
+        return self.backend.recover()
 
     def grasp(self, width: float, *, force: float | None = None, speed: float | None = None) -> bool:
         """显式夹持动作；普通 gripper position action 不会隐式触发 grasp。"""
@@ -167,31 +165,51 @@ class FrankaFR3Driver(BaseRobotDriver):
             raise RuntimeError("FR3 motion worker 已失败") from self._worker_error
 
     def _worker_loop(self) -> None:
-        sent: tuple[float, ...] | None = None
+        # The initial target mirrors the measured state and must not start a
+        # redundant motion merely because the worker has just been created.
+        sent_arm = tuple(self._target[:7]) if self._target is not None else None
+        sent_gripper = self._target[7] if self._target is not None else None
+        motion_running = False
         while True:
             with self._condition:
                 self._condition.wait_for(
                     lambda: self._worker_stop
-                    or (self._target is not None and tuple(self._target) != sent),
+                    or (
+                        self._target is not None
+                        and (
+                            tuple(self._target[:7]) != sent_arm
+                            or self._target[7] != sent_gripper
+                        )
+                    ),
                     timeout=0.05,
                 )
                 if self._worker_stop:
                     return
                 target = tuple(self._target or ())
+                target_arm = target[:7]
+                target_gripper = target[7]
                 target_time = self._target_time
             if time.monotonic() - target_time > self.action_timeout:
                 try:
-                    self.backend.stop()
-                    sent = target
+                    if motion_running:
+                        self.backend.stop()
+                    sent_arm = target_arm
+                    sent_gripper = target_gripper
+                    motion_running = False
                 except BaseException as exc:  # pragma: no cover - defensive
                     self._worker_error = exc
                 continue
             try:
-                self.backend.command_joints(target[:7], self.dynamics_factor)
-                sent = target
-                if target[7] != (self._last_state.gripper_width if self._last_state else target[7]):
-                    self.backend.move_gripper(target[7], self.gripper_speed, self.gripper_force)
+                if target_arm != sent_arm:
+                    self.backend.command_joints(target_arm, self.dynamics_factor)
+                    motion_running = True
+                    sent_arm = target_arm
+                if target_gripper != sent_gripper:
+                    self.backend.move_gripper(target_gripper, self.gripper_speed, self.gripper_force)
+                    sent_gripper = target_gripper
                     self._last_state = self.backend.state()
+                elif motion_running:
+                    motion_running = self.backend.poll_motion()
             except BaseException as exc:
                 self._worker_error = exc
                 try:

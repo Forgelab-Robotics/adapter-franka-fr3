@@ -112,7 +112,7 @@ rpy:         [0.0, 0.0, -0.7853981633974483] rad
 |---|---|---|
 | Robot IP | `172.16.0.2` | 待在 Desk → Network 核对 |
 | System Image | `5.8.1` | 待 Desk 核对并截图留档 |
-| Robot Server | 暂按 `9` 配置 | 首次 Franky 只连接握手确认 |
+| Robot Server | Franky wheel 按 `9` 安装 | Desk 核对，并由 `Robot` 构造握手确认；不要与 Hand `server_version=3` 混淆 |
 | 硬件型号 | FR3v2 | System Image < 5.9.1 时 Desk 显示可能不准，需看底座 Type Label |
 | 末端 | white Franka Hand | 核对实物、homing、state 与 `max_width` |
 | home/reset | 见上文 | 低速逐轴确认后才能改为 verified |

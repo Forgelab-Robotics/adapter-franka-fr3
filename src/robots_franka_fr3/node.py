@@ -36,7 +36,7 @@ def main() -> int:
     backend = FakeBackend() if backend_name == "fake" else FrankyBackend(
         ip,
         dynamics_factor=dynamics_factor,
-        expected_server_version=robot_config.get("robot_server_version"),
+        expected_gripper_server_version=robot_config.get("gripper_server_version"),
         )
     driver = FrankaFR3Driver(
         ip=ip,
@@ -47,7 +47,6 @@ def main() -> int:
         max_step_rad=float(config.get("max_step_rad", control.get("max_step_rad", 0.05))),
         gripper_speed=float(config.get("gripper_speed_mps", control.get("gripper_speed_mps", 0.03))),
         gripper_force=float(config.get("gripper_force_n", control.get("gripper_force_n", 50.0))),
-        expected_server_version=robot_config.get("robot_server_version"),
         auto_connect=True,
     )
     try:

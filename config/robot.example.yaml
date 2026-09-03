@@ -5,7 +5,8 @@ robot:
   backend: fake             # fake|franky；真机必须显式改为 franky
   ip: "172.16.0.2"
   system_image: "5.8.1"
-  robot_server_version: 9
+  franky_wheel_robot_server_version: 9  # wheel 索引兼容目标；运行时由 Robot 握手验证
+  gripper_server_version: 3             # Franka Hand 独立 server_version
   verification_status: pending_on_hardware
 
 contract:

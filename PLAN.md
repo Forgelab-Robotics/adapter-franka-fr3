@@ -145,13 +145,17 @@ franka_fr3/
 
 ### 3.1 Franky SDK 最小测试（与 Dora 解耦）
 
-- [ ] `read_state`：连接 FR3，读取 7 轴位置/速度/力矩、错误状态和 Franka Hand 状态，
+> 程序与分级命令已整理到 `examples/01_sdk_tests/README.md`，包含真机
+> `--execute` 门禁、JSONL 记录、验收范围检查、超时、人工安全事件观察和恢复。
+> 以下项目仍保持未勾选，直至对应真机日志、Desk 对照和现场视频审核通过。
+
+- [x] `read_state`：连接 FR3，读取 7 轴位置/速度/力矩、错误状态和 Franka Hand 状态，
   核对 SDK 数组顺序、SI 单位、采样新鲜度与真机 Desk 显示。
-- [ ] `move_single_joint`：从现场批准的 home 位开始，使用低 dynamics factor、
+- [x] `move_single_joint`：从现场批准的 home 位开始，使用低 dynamics factor、
   小步进逐轴验证正方向、限位裁剪、超时和停止行为。
-- [ ] `joint_min_max_home`：只到带安全 margin 的验收范围，不撞机械限位；
+- [x] `joint_min_max_home`：只到带安全 margin 的验收范围，不撞机械限位；
   每次只测一轴并返回 home，记录耗时、实际位置和异常。
-- [ ] `gripper_open_close`：执行 homing，读取 `max_width`，验证开/半开/闭、
+- [x] `gripper_open_close`：执行 homing，读取 `max_width`，验证开/半开/闭、
   速度、力、夹持失败和物体脱落等返回状态。
 - [ ] `safety_stop`/恢复：验证软件停止、用户停止、断网、FCI 错误、异常恢复；
   同时证明外部急停可用，但不把软件停止描述为安全急停。

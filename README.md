@@ -58,6 +58,10 @@ https://timschneider42.github.io/franky/whl/by-robot-server-version/9/
 Server 不是 9，必须修改 `pyproject.toml` 的 Franky index、重新生成
 `uv.lock`，不得忽略版本不匹配异常。
 
+Robot Server 兼容性由 Desk 版本记录和 `franky.Robot` 构造握手共同确认；
+`franky.Gripper.server_version` 是独立的 Hand server 版本（当前真机为 `3`），
+不能拿它与 wheel 索引中的 Robot Server `9` 比较。
+
 安装和检查：
 
 ```bash
