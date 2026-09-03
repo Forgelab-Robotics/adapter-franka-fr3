@@ -12,8 +12,9 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import yaml
-
-from forge_robot.node_runner import run_dora_robot_node
+from dora import Node
+from forge_msgs import JointCommand
+from forge_robot.arrow_validation import RobotArrowSchemaError, validate_robot_control_arrow
 
 from robots_franka_fr3.backend import DynamicsFactors, FakeBackend, FrankyBackend
 from robots_franka_fr3.driver import FrankaFR3Driver
@@ -80,6 +81,65 @@ def build_driver_from_config(config: Mapping[str, Any]) -> FrankaFR3Driver:
     )
 
 
+def run_franka_dora_node(driver: FrankaFR3Driver, *, debug: bool = False) -> int:
+    """运行 FR3 Dora 节点，并把上游 Action cancel 明确传播到真机 stop。
+
+    通用 ``run_dora_robot_node`` 只处理 ``action``，无法观察轨迹/夹爪
+    controller 的 cancel。末端 Skill 若只停止发送 waypoint，Franky 已接收的异步
+    ``JointMotion`` 仍可能继续运行。因此本节点额外接受任意 ``stop/<source>`` 输入，
+    对 arm/Hand 同时调用软件 stop。软件 stop 仍不替代 Desk/外部急停。
+    """
+    node = Node()
+    joint_order = driver.joint_order
+    try:
+        for event in node:
+            kind = event.get("kind")
+            if kind not in (None, "dora"):
+                continue
+            match event.get("type"):
+                case "INPUT":
+                    input_id = str(event["id"])
+                    if input_id == "tick":
+                        state = driver.get_state()
+                        node.send_output("state", state.to_arrow())
+                        continue
+                    if input_id.startswith("stop/") and len(input_id) > len("stop/"):
+                        logging.warning("收到 %s，向 FR3 arm/Hand 传播软件 stop", input_id)
+                        driver.stop()
+                        continue
+                    if input_id == "action" or (
+                        input_id.startswith("action/")
+                        and len(input_id) > len("action/")
+                    ):
+                        value = event.get("value")
+                        try:
+                            validate_robot_control_arrow(value, joint_order)
+                        except RobotArrowSchemaError as exc:
+                            logging.error("拒绝无效 %s（Arrow schema）：%s", input_id, exc)
+                            driver.stop()
+                            raise
+                        command = JointCommand.from_arrow(value)
+                        if debug:
+                            logging.debug(
+                                "收到 %s：joints=%s mode=%s",
+                                input_id,
+                                command.name,
+                                command.mode,
+                            )
+                        driver.set_command(command)
+                case "STOP":
+                    break
+                case "ERROR":
+                    logging.error("节点收到 Dora ERROR：%s", event.get("error", "unknown"))
+                    driver.stop()
+                    break
+                case _:
+                    pass
+    finally:
+        driver.disconnect()
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -92,7 +152,7 @@ def main() -> int:
         parser.error(str(exc))
     driver.connect()
     try:
-        return run_dora_robot_node(driver, joint_order=driver.joint_order, debug=args.debug)
+        return run_franka_dora_node(driver, debug=args.debug)
     finally:
         driver.disconnect()
 

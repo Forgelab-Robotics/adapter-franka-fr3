@@ -5,10 +5,9 @@ import unittest
 from unittest.mock import patch
 
 from forge_msgs import JointCommand, JointState
-from forge_robot.node_runner import run_dora_robot_node
-
 from robots_franka_fr3.backend import FakeBackend
 from robots_franka_fr3.driver import FrankaFR3Driver
+from robots_franka_fr3.node import run_franka_dora_node
 
 
 class _Node:
@@ -25,6 +24,7 @@ class _Node:
                 name=["gripper"], position=[-0.04]
             ).to_arrow()},
             {"type": "INPUT", "id": "tick", "value": None},
+            {"type": "INPUT", "id": "stop/arm", "value": None},
             {"type": "STOP"},
         ]
         self.__class__.instance = self
@@ -50,10 +50,8 @@ class DoraSingleNodeTest(unittest.TestCase):
             worker_period=0.005, min_command_interval=0.005,
         )
         driver.connect()
-        with patch("forge_robot.node_runner.Node", _Node):
-            self.assertEqual(
-                run_dora_robot_node(driver, joint_order=driver.joint_order), 0
-            )
+        with patch("robots_franka_fr3.node.Node", _Node):
+            self.assertEqual(run_franka_dora_node(driver), 0)
 
         assert _Node.instance is not None
         self.assertEqual([name for name, _ in _Node.instance.outputs], ["state", "state"])
@@ -62,8 +60,9 @@ class DoraSingleNodeTest(unittest.TestCase):
         self.assertAlmostEqual(final.position[0], 0.02)
         self.assertAlmostEqual(final.position[-1], 0.04)
         self.assertFalse(driver.connected)
-        self.assertGreater(backend.robot_stop_count, 0)
-        self.assertGreater(backend.gripper_stop_count, 0)
+        # stop/arm 与最终 disconnect 都必须传播到两个后端通道。
+        self.assertGreaterEqual(backend.robot_stop_count, 2)
+        self.assertGreaterEqual(backend.gripper_stop_count, 2)
 
     def test_invalid_action_exits_and_disconnects(self) -> None:
         class InvalidActionNode(_Node):
@@ -78,9 +77,9 @@ class DoraSingleNodeTest(unittest.TestCase):
         backend = FakeBackend()
         driver = FrankaFR3Driver(backend=backend, require_homing=False)
         driver.connect()
-        with patch("forge_robot.node_runner.Node", InvalidActionNode):
+        with patch("robots_franka_fr3.node.Node", InvalidActionNode):
             with self.assertRaises(ValueError):
-                run_dora_robot_node(driver, joint_order=driver.joint_order)
+                run_franka_dora_node(driver)
         self.assertFalse(driver.connected)
         self.assertFalse(backend.connected)
 

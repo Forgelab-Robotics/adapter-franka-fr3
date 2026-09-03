@@ -1,0 +1,16 @@
+joint_names:
+- fr3v2_joint1
+- fr3v2_joint2
+- fr3v2_joint3
+- fr3v2_joint4
+- fr3v2_joint5
+- fr3v2_joint6
+- fr3v2_joint7
+control_period_ms: 20
+feedback_timeout_ms: 500
+start_position_tolerance: 0.05
+path_position_tolerance: 0.2
+goal_position_tolerance: 0.015
+goal_velocity_tolerance: 0.05
+goal_time_tolerance_ms: 3000
+result_cache_size: 128

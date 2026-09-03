@@ -1,0 +1,447 @@
+host: 127.0.0.1
+port: 19012
+joint_order:
+- fr3v2_joint1
+- fr3v2_joint2
+- fr3v2_joint3
+- fr3v2_joint4
+- fr3v2_joint5
+- fr3v2_joint6
+- fr3v2_joint7
+- gripper
+image_input_ids: []
+readiness:
+  require_proprio_state: true
+  require_images: false
+  require_state_client: false
+  require_image_client: false
+  proprio_stale_after_sec: 0.5
+  image_stale_after_sec: 2.0
+agent:
+  enabled: false
+  action_manifests: []
+tools:
+  enabled: true
+  lease_ttl_ms: 3000
+  invoke_timeout_ms: 60000
+  request_input_id: tool_request
+  response_output_id: tool_response
+  specs:
+  - tool_id: motion.resolve_relative_pose
+    implementation_id: motion.integration
+    endpoint_id: motion.relative_pose
+    operation: resolve
+    semantics: query
+    description: Resolve a bounded relative FR3v2 TCP displacement into an absolute
+      target pose without moving the robot.
+    input_schema:
+      type: object
+      additionalProperties: false
+      required:
+      - group_name
+      - target_frame
+      - reference
+      - translation_frame
+      - translation_m
+      - orientation_mode
+      - axis_angle_rad
+      - max_state_age_ms
+      properties:
+        group_name:
+          const: fr3v2_arm
+        target_frame:
+          const: fr3v2_hand_tcp
+        reference:
+          const: current
+        translation_frame:
+          enum:
+          - tcp
+          - base
+        translation_m:
+          type: object
+          additionalProperties: false
+          required:
+          - x
+          - y
+          - z
+          properties:
+            x:
+              type: number
+              minimum: -0.05
+              maximum: 0.05
+            y:
+              type: number
+              minimum: -0.05
+              maximum: 0.05
+            z:
+              type: number
+              minimum: -0.05
+              maximum: 0.05
+        orientation_mode:
+          enum:
+          - preserve
+          - apply_delta
+        axis_angle_rad:
+          oneOf:
+          - type: 'null'
+          - type: object
+            additionalProperties: false
+            required:
+            - x
+            - y
+            - z
+            properties:
+              x:
+                type: number
+                minimum: -0.1745329252
+                maximum: 0.1745329252
+              y:
+                type: number
+                minimum: -0.1745329252
+                maximum: 0.1745329252
+              z:
+                type: number
+                minimum: -0.1745329252
+                maximum: 0.1745329252
+        max_state_age_ms:
+          type: integer
+          minimum: 1
+          maximum: 200
+    output_schema:
+      type: object
+      additionalProperties: false
+      required:
+      - source_pose
+      - target_pose
+      - frames
+      - state_age_ms
+      - source_snapshot
+      properties:
+        source_pose: &id001
+          type: object
+          additionalProperties: false
+          required:
+          - x
+          - y
+          - z
+          - qx
+          - qy
+          - qz
+          - qw
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+            z:
+              type: number
+            qx:
+              type: number
+            qy:
+              type: number
+            qz:
+              type: number
+            qw:
+              type: number
+        target_pose: *id001
+        frames:
+          type: object
+          additionalProperties: false
+          required:
+          - reference_frame
+          - target_frame
+          - translation_frame
+          - rotation_frame
+          properties:
+            reference_frame:
+              type: string
+            target_frame:
+              type: string
+            translation_frame:
+              type: string
+            rotation_frame:
+              type: string
+        state_age_ms:
+          type: number
+          minimum: 0
+        source_snapshot:
+          type: object
+          additionalProperties: false
+          required:
+          - version
+          - received_monotonic_ns
+          - age_ms
+          - time_basis
+          properties:
+            version:
+              type: integer
+              minimum: 1
+            received_monotonic_ns:
+              type: integer
+              minimum: 0
+            age_ms:
+              type: number
+              minimum: 0
+            time_basis:
+              const: policy_receive_monotonic
+    readiness:
+    - proprio_state
+    robot_frame_profile:
+      robot_id: franka_fr3v2
+      base_frame: fr3v2_link0
+      tool_frame: fr3v2_hand_tcp
+      frames: {}
+      directions:
+        forward:
+          frame: fr3v2_link0
+          axis: x
+          sign: 1
+        left:
+          frame: fr3v2_link0
+          axis: y
+          sign: 1
+        up:
+          frame: fr3v2_link0
+          axis: z
+          sign: 1
+  - tool_id: motion.move_pose
+    implementation_id: motion.integration
+    endpoint_id: motion.server
+    operation: move_pose
+    semantics: action
+    description: Move the FR3v2 arm to an absolute Cartesian TCP pose at commissioning-limited
+      speed.
+    input_schema:
+      type: object
+      additionalProperties: false
+      required:
+      - group_name
+      - reference_frame
+      - target_frame
+      - target_pose
+      - velocity_scale
+      - acceleration_scale
+      - position_tolerance_m
+      - orientation_tolerance_rad
+      properties:
+        group_name:
+          const: fr3v2_arm
+        reference_frame:
+          const: fr3v2_link0
+        target_frame:
+          const: fr3v2_hand_tcp
+        target_pose: *id001
+        velocity_scale:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 0.1
+        acceleration_scale:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 0.1
+        position_tolerance_m:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 0.01
+        orientation_tolerance_rad:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 0.1
+        requested_duration_ms:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 60000
+    output_schema:
+      type: object
+      additionalProperties: false
+      required:
+      - goal_id
+      - motion_result
+      properties:
+        goal_id:
+          type: string
+        motion_result:
+          type: object
+          additionalProperties: false
+          required:
+          - error_code
+          - message
+          - elapsed_ns
+          - final_pose
+          - final_position_error_m
+          - final_orientation_error_rad
+          - joint_names
+          - final_joint_positions
+          properties:
+            error_code:
+              enum:
+              - SUCCESS
+              - INVALID_GOAL
+              - BUSY
+              - INVALID_GROUP
+              - INVALID_JOINTS
+              - INVALID_FRAME
+              - NO_FRESH_ROBOT_STATE
+              - IK_FAILED
+              - IK_TIMED_OUT
+              - JOINT_LIMIT_VIOLATION
+              - PLANNING_FAILED
+              - TRAJECTORY_GENERATION_FAILED
+              - TRAJECTORY_REJECTED
+              - TRAJECTORY_EXECUTION_FAILED
+              - FINAL_JOINT_TOLERANCE_VIOLATED
+              - FINAL_POSE_TOLERANCE_VIOLATED
+              - CANCELED
+              - INTERNAL_ERROR
+            message:
+              type: string
+            elapsed_ns:
+              type: integer
+              minimum: 0
+            final_pose:
+              oneOf:
+              - type: 'null'
+              - *id001
+            final_position_error_m:
+              type:
+              - number
+              - 'null'
+              minimum: 0
+            final_orientation_error_rad:
+              type:
+              - number
+              - 'null'
+              minimum: 0
+            joint_names:
+              type: array
+              items:
+                type: string
+            final_joint_positions:
+              type: array
+              items:
+                type: number
+    readiness:
+    - proprio_state
+    robot_frame_profile:
+      robot_id: franka_fr3v2
+      base_frame: fr3v2_link0
+      tool_frame: fr3v2_hand_tcp
+      frames: {}
+      directions:
+        forward:
+          frame: fr3v2_link0
+          axis: x
+          sign: 1
+        left:
+          frame: fr3v2_link0
+          axis: y
+          sign: 1
+        up:
+          frame: fr3v2_link0
+          axis: z
+          sign: 1
+  - tool_id: gripper.set_opening
+    implementation_id: franka.hand
+    endpoint_id: gripper.controller
+    operation: set_opening
+    semantics: action
+    description: Set the Franka Hand total finger opening in metres using position
+      control.
+    input_schema:
+      type: object
+      additionalProperties: false
+      required:
+      - opening_m
+      properties:
+        opening_m:
+          type: number
+          minimum: 0
+          maximum: 0.08
+    output_schema:
+      type: object
+      additionalProperties: false
+      required:
+      - goal_id
+      - gripper_result
+      properties:
+        goal_id:
+          type: string
+        gripper_result:
+          type: object
+          additionalProperties: false
+          required:
+          - error_code
+          - message
+          - elapsed_ns
+          - position
+          - velocity
+          - effort
+          - stalled
+          - reached_goal
+          properties:
+            error_code:
+              enum:
+              - SUCCESS
+              - INVALID_GOAL
+              - BUSY
+              - POSITION_LIMIT_VIOLATION
+              - UNSUPPORTED_VELOCITY
+              - UNSUPPORTED_EFFORT
+              - NO_FRESH_ROBOT_STATE
+              - FEEDBACK_STALE
+              - STALLED
+              - EXECUTION_TIMED_OUT
+              - HARDWARE_FAULT
+              - CANCELED
+              - INTERNAL_ERROR
+            message:
+              type: string
+            elapsed_ns:
+              type: integer
+              minimum: 0
+            position:
+              type:
+              - number
+              - 'null'
+            velocity:
+              type:
+              - number
+              - 'null'
+            effort:
+              type:
+              - number
+              - 'null'
+            stalled:
+              type: boolean
+            reached_goal:
+              type: boolean
+    readiness:
+    - proprio_state
+    robot_frame_profile:
+      robot_id: franka_fr3v2
+      base_frame: fr3v2_link0
+      tool_frame: fr3v2_hand_tcp
+      frames: {}
+      directions:
+        forward:
+          frame: fr3v2_link0
+          axis: x
+          sign: 1
+        left:
+          frame: fr3v2_link0
+          axis: y
+          sign: 1
+        up:
+          frame: fr3v2_link0
+          axis: z
+          sign: 1
+  providers:
+  - endpoint_id: motion.relative_pose
+    input_id: relative_tool_in
+    output_id: relative_tool_out
+  - endpoint_id: motion.server
+    input_id: action_tool_in
+    output_id: action_tool_out
+  - endpoint_id: gripper.controller
+    input_id: gripper_tool_in
+    output_id: gripper_tool_out

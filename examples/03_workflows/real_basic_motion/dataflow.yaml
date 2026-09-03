@@ -16,4 +16,4 @@ nodes:
     outputs:
       - action
     args: >-
-      --joint-order fr3v2_joint1 --mode target --target 0.2
+      --joint-order fr3v2_joint1 --mode target --target 0.02

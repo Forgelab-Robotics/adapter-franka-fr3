@@ -1,0 +1,102 @@
+manifest_version: 2
+name: move-arm-by-ee-franka-fr3
+version: 0.1.2
+description: Resolve bounded relative FR3v2 end-effector motion and control the Franka
+  Hand opening.
+skill_document: SKILL.md
+gateway_url: http://127.0.0.1:19012
+required_tools:
+- motion.resolve_relative_pose
+- motion.move_pose
+- gripper.set_opening
+profiles:
+  franka_fake:
+    dataflow: profiles/franka_fake/dataflow.yaml
+    required_binaries:
+    - gateway
+    - gripper_action_controller
+    - gripper_action_policy
+    - joint_trajectory_controller
+    - motion_action_policy
+    - motion_server
+    - relative_pose_policy
+    required_assets:
+    - assets/urdf/fr3v2_franka_hand.urdf
+    required_environment:
+    - FRANKA_FR3_PROJECT
+    environment: {}
+  franka_real:
+    dataflow: profiles/franka_real/dataflow.yaml
+    required_binaries:
+    - gateway
+    - gripper_action_controller
+    - gripper_action_policy
+    - joint_trajectory_controller
+    - motion_action_policy
+    - motion_server
+    - relative_pose_policy
+    required_assets:
+    - assets/urdf/fr3v2_franka_hand.urdf
+    required_environment:
+    - FRANKA_FR3_PROJECT
+    - PAOS_FRANKA_REAL_ACK
+    environment: {}
+artifacts:
+  resolver: registry
+  nodes:
+    gateway:
+      artifact_id: gateway-1.0.2-linux-x86_64-tar-gz
+      version: 1.0.2
+      platform: linux
+      arch: x86_64
+      artifact_type: executable_tar_gz
+      entrypoint: gateway
+      sha256: 07584846f16012c6137b10cf743073cd2fe9a7f64564ba2322a7090e66fd3076
+    relative_pose_policy:
+      artifact_id: relative_pose_policy-0.1.0-linux-x86_64-tar-gz
+      version: 0.1.0
+      platform: linux
+      arch: x86_64
+      artifact_type: executable_tar_gz
+      entrypoint: relative_pose_policy
+      sha256: ee6857068bf295fc0f18a06f99e7c7310486dd48cf119b380ddcd894e4a5d767
+    motion_action_policy:
+      artifact_id: motion_action_policy-0.1.0-linux-x86_64-tar-gz
+      version: 0.1.0
+      platform: linux
+      arch: x86_64
+      artifact_type: executable_tar_gz
+      entrypoint: motion_action_policy
+      sha256: c64c3c8a725ce70174f9f545c3bb3b793680544adc551afb9ee504a4010c50d9
+    gripper_action_policy:
+      artifact_id: gripper_action_policy-0.1.0-linux-x86_64-tar-gz
+      version: 0.1.0
+      platform: linux
+      arch: x86_64
+      artifact_type: executable_tar_gz
+      entrypoint: gripper_action_policy
+      sha256: 1afc5157bae3ddf8cf673db3375d6e05d6a82b1d061f0dcb142ff6480b9d38d0
+    motion_server:
+      artifact_id: motion_server-0.1.0-linux-x86_64-tar-gz
+      version: 0.1.0
+      platform: linux
+      arch: x86_64
+      artifact_type: executable_tar_gz
+      entrypoint: motion_server
+      sha256: 91041350abbef24226527ffc8a9f3854ef1c57d4d488972b9ff536f8db265c99
+    joint_trajectory_controller:
+      artifact_id: joint_trajectory_controller-0.1.0-linux-x86_64-tar-gz
+      version: 0.1.0
+      platform: linux
+      arch: x86_64
+      artifact_type: executable_tar_gz
+      entrypoint: joint_trajectory_controller
+      sha256: a57da3fa4211a5df4e1485724f2d11ef402fbce844950a176b64d2e4ab681efc
+    gripper_action_controller:
+      artifact_id: gripper_action_controller-0.1.0-linux-x86_64-tar-gz
+      version: 0.1.0
+      platform: linux
+      arch: x86_64
+      artifact_type: executable_tar_gz
+      entrypoint: gripper_action_controller
+      sha256: a210987c1694d8fb9ed6576af469027c934ab707e470b43f164be3aee876c0f1

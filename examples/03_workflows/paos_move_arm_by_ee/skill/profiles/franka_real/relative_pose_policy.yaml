@@ -1,0 +1,12 @@
+group_name: fr3v2_arm
+joint_names:
+  - fr3v2_joint1
+  - fr3v2_joint2
+  - fr3v2_joint3
+  - fr3v2_joint4
+  - fr3v2_joint5
+  - fr3v2_joint6
+  - fr3v2_joint7
+urdf_path: ../../assets/urdf/fr3v2_franka_hand.urdf
+base_frame: fr3v2_link0
+tip_frame: fr3v2_hand_tcp
