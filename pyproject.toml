@@ -22,6 +22,9 @@ dev = [
   "mujoco>=3.3.0",
   "pytest>=8.0",
 ]
+build = [
+  "pyinstaller>=6.0",
+]
 
 [[tool.uv.index]]
 name = "franky-robot-server-9"
@@ -39,8 +42,8 @@ build-backend = "uv_build"
 module-name = "robots_franka_fr3"
 
 [project.scripts]
-robots-franka-fr3 = "robots_franka_fr3.cli:main"
-robots_franka_fr3 = "robots_franka_fr3.cli:main"
+robots-franka-fr3 = "robots_franka_fr3.main:main"
+robots_franka_fr3 = "robots_franka_fr3.main:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

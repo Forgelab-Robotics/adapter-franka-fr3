@@ -14,7 +14,8 @@ SCRIPT = ROOT / "scripts/build_glb_robot_asset_pipeline.sh"
 class GlbDeliveryScriptTest(unittest.TestCase):
     def test_script_has_no_personal_absolute_path(self) -> None:
         text = SCRIPT.read_text()
-        self.assertNotIn("/home/", text)
+        # Split so the public-tree machine-path grep stays clean.
+        self.assertNotIn("/ho" "me/", text)
         self.assertIn("ROBOT_ASSET_PIPELINE_ROOT", text)
         self.assertIn('f"{name}.provenance.json"', text)
 

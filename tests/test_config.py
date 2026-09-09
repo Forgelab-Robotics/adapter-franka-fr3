@@ -7,13 +7,18 @@ import yaml
 
 from robots_franka_fr3.contract import ACTUATOR_ORDER, HOME_POSITION
 from robots_franka_fr3.backend import DynamicsFactors, FakeBackend
-from robots_franka_fr3.node import build_driver_from_config
+from robots_franka_fr3.config import build_driver_from_config, load_config
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class ConfigTest(unittest.TestCase):
+    def test_load_config_reads_robot_yaml(self) -> None:
+        config = load_config(ROOT / "config/robot.example.yaml")
+        self.assertEqual(config["robot"]["backend"], "fake")
+        self.assertFalse(config["control"]["allow_real_motion"])
+
     def test_example_matches_contract(self) -> None:
         config = yaml.safe_load((ROOT / "config/robot.example.yaml").read_text())
         self.assertEqual(

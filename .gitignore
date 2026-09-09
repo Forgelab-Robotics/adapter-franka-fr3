@@ -13,3 +13,6 @@ validation_output/*.mp4
 validation_output/*.mcap
 validation_output/*.log
 !validation_output/simulation_validation.log
+
+# PyInstaller 隔离构建环境
+.venv_build/

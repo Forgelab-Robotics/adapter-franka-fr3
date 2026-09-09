@@ -4,10 +4,26 @@ import time
 import unittest
 from unittest.mock import patch
 
+from typer.testing import CliRunner
+
 from forge_msgs import JointCommand, JointState
 from robots_franka_fr3.backend import FakeBackend
 from robots_franka_fr3.driver import FrankaFR3Driver
+from robots_franka_fr3.node import app as node_app
 from robots_franka_fr3.node import run_franka_dora_node
+
+runner = CliRunner()
+
+
+class NodeCliTest(unittest.TestCase):
+    def test_help_documents_config_option(self) -> None:
+        result = runner.invoke(node_app, ["--help"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("--config", result.output)
+
+    def test_missing_config_is_usage_error(self) -> None:
+        result = runner.invoke(node_app, [])
+        self.assertEqual(result.exit_code, 2, result.output)
 
 
 class _Node:

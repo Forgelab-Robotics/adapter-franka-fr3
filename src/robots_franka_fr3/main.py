@@ -2,30 +2,143 @@
 
 from __future__ import annotations
 
-import argparse
+from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
 import math
+import sys
 import time
 from pathlib import Path
 
+import typer
 from forge_msgs import JointCommand
 
+from . import __version__
 from .backend import FakeBackend, FrankyBackend, RobotBackend
 from .contract import ACTUATOR_ORDER, ARM_JOINT_ORDER, HOME_POSITION, GRIPPER_MAX_WIDTH_M, load_joint_limits
 from .driver import FrankaFR3Driver
 
 
-def _backend(args: argparse.Namespace) -> RobotBackend:
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"franka-fr3 {__version__}")
+        raise typer.Exit()
+
+
+app = typer.Typer(
+    name="robots-franka-fr3",
+    help="FR3 Franky SDK 最小测试与 Dora 节点 CLI。真机运动子命令必须显式 --execute。",
+    no_args_is_help=True,
+)
+
+
+@app.callback()
+def _callback(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
+        help="显示版本并退出",
+    ),
+) -> None:
+    pass
+
+
+@dataclass
+class Args:
+    """命令处理函数的统一参数容器（默认值对应各子命令的 argparse 默认）。"""
+
+    backend: str = "fake"
+    ip: str = "172.16.0.2"
+    dynamics_factor: float = 0.05
+    max_step_rad: float = 0.05
+    period: float = 0.05
+    no_homing: bool = False
+    debug: bool = False
+    gripper_server_version: int | None = None
+    gripper_speed: float = 0.03
+    gripper_force: float = 50.0
+    log: str | None = None
+    execute: bool = False
+    samples: int = 10
+    max_age: float = 0.5
+    max_read_ms: float = 500.0
+    joint: str = "fr3v2_joint1"
+    offset: float = 0.01
+    max_offset: float = 0.05
+    timeout: float = 10.0
+    tolerance: float = 0.002
+    acceptance_min: float | None = None
+    acceptance_max: float | None = None
+    margin: float = 0.1
+    home_rad: list[float] | None = None
+    retries: int = 2
+    retry_delay: float = 1.0
+    recover_on_retry: bool = True
+    recovery_delay: float = 1.0
+    dry_run: bool = False
+    width_tolerance: float = 0.003
+    grasp_width: float | None = None
+    expect_grasp: str = "none"
+    hold_seconds: float = 2.0
+    drop_threshold: float = 0.002
+    stop_after: float = 0.2
+    settle_seconds: float = 0.5
+    event: str | None = None
+    duration: float = 30.0
+    config: str | None = None
+
+
+def _common_args(
+    *,
+    backend: str,
+    ip: str,
+    dynamics_factor: float,
+    max_step_rad: float,
+    period: float,
+    debug: bool,
+    gripper_server_version: int | None,
+    gripper_speed: float,
+    gripper_force: float,
+    log: str | None,
+    **extra: object,
+) -> Args:
+    return Args(
+        backend=backend,
+        ip=ip,
+        dynamics_factor=dynamics_factor,
+        max_step_rad=max_step_rad,
+        period=period,
+        debug=debug,
+        gripper_server_version=gripper_server_version,
+        gripper_speed=gripper_speed,
+        gripper_force=gripper_force,
+        log=log,
+        **extra,
+    )
+
+
+def _validate_backend(backend: str) -> None:
+    if backend not in ("fake", "franky"):
+        raise typer.BadParameter("backend 必须是 fake 或 franky")
+
+
+def _validate_joint_name(joint: str) -> None:
+    if joint not in ARM_JOINT_ORDER:
+        raise typer.BadParameter(f"未知关节：{joint}")
+
+
+def _backend(args: Args) -> RobotBackend:
     return FakeBackend() if args.backend == "fake" else FrankyBackend(
         args.ip, dynamics_factor=args.dynamics_factor,
-        expected_gripper_server_version=getattr(args, "gripper_server_version", None),
+        expected_gripper_server_version=args.gripper_server_version,
         check_realtime=True,
     )
 
 
 def _driver(
-    args: argparse.Namespace,
+    args: Args,
     *,
     require_homing: bool | None = None,
     position_command_semantics: str = "absolute",
@@ -58,20 +171,20 @@ class _Recorder:
         return record
 
 
-def _recorder(args: argparse.Namespace) -> _Recorder:
-    return _Recorder(getattr(args, "log", None))
+def _recorder(args: Args) -> _Recorder:
+    return _Recorder(args.log)
 
 
-def _require_real_execute(args: argparse.Namespace, action: str) -> None:
-    if args.backend == "franky" and not getattr(args, "execute", False):
+def _require_real_execute(args: Args, action: str) -> None:
+    if args.backend == "franky" and not args.execute:
         raise SystemExit(
             f"拒绝执行真机{action}：确认工作区、Desk、外部急停、监护人和批准姿态后，"
             "显式添加 --execute"
         )
 
 
-def _approved_home(args: argparse.Namespace) -> tuple[float, ...]:
-    configured = getattr(args, "home_rad", None) or HOME_POSITION[:7]
+def _approved_home(args: Args) -> tuple[float, ...]:
+    configured = args.home_rad or HOME_POSITION[:7]
     values = tuple(float(value) for value in configured)
     if len(values) != 7 or not all(math.isfinite(value) for value in values):
         raise ValueError("home-rad 必须包含 7 个有限的 rad 值")
@@ -87,14 +200,14 @@ def _validate_joint_target(joint: str, target: float) -> None:
         raise ValueError(f"{joint} 目标 {target} 超出官方限位 [{lower}, {upper}] rad")
 
 
-def read_state(args: argparse.Namespace) -> int:
+def read_state(args: Args) -> int:
     # State inspection must not start the motion worker or home the gripper.
     backend = _backend(args)
     recorder = _recorder(args)
-    samples = int(getattr(args, "samples", 1))
-    period = float(getattr(args, "period", 0.1))
-    max_age = float(getattr(args, "max_age", 0.5))
-    max_read_ms = float(getattr(args, "max_read_ms", 500.0))
+    samples = args.samples
+    period = args.period
+    max_age = args.max_age
+    max_read_ms = args.max_read_ms
     if samples <= 0 or period < 0.0 or max_age <= 0.0 or max_read_ms <= 0.0:
         raise ValueError("samples 必须为正；period、max-age、max-read-ms 必须为非负有效值")
     backend.connect()
@@ -190,10 +303,10 @@ def _exception_chain(exc: BaseException) -> list[dict[str, str]]:
     return chain
 
 
-def _run_joint_range_phase(args: argparse.Namespace, recorder: _Recorder, *,
+def _run_joint_range_phase(args: Args, recorder: _Recorder, *,
                            joint: str, phase: str, target: float) -> None:
     index = ARM_JOINT_ORDER.index(joint)
-    retries = int(args.retries)
+    retries = args.retries
     if retries < 0 or args.retry_delay < 0.0 or args.recovery_delay < 0.0:
         raise ValueError("retries、retry-delay 和 recovery-delay 不能为负")
 
@@ -283,12 +396,12 @@ def _run_joint_range_phase(args: argparse.Namespace, recorder: _Recorder, *,
     ) from last_error
 
 
-def move_single_joint(args: argparse.Namespace) -> int:
+def move_single_joint(args: Args) -> int:
     if args.joint not in ARM_JOINT_ORDER:
         raise SystemExit(f"未知关节：{args.joint}")
     _require_real_execute(args, "单关节运动")
     recorder = _recorder(args)
-    max_offset = float(getattr(args, "max_offset", 0.05))
+    max_offset = args.max_offset
     if max_offset <= 0.0 or not math.isfinite(args.offset) or abs(args.offset) > max_offset:
         raise ValueError(f"offset 必须为有限数且绝对值不超过 {max_offset} rad")
     # An arm-only SDK test must never home or move the gripper as a side effect.
@@ -324,7 +437,7 @@ def move_single_joint(args: argparse.Namespace) -> int:
     return 0
 
 
-def joint_min_max_home(args: argparse.Namespace) -> int:
+def joint_min_max_home(args: Args) -> int:
     limits = load_joint_limits()
     name = args.joint
     index = ARM_JOINT_ORDER.index(name)
@@ -332,7 +445,7 @@ def joint_min_max_home(args: argparse.Namespace) -> int:
     home = approved_home[index]
     acceptance_min = float(args.acceptance_min)
     acceptance_max = float(args.acceptance_max)
-    margin = float(args.margin)
+    margin = args.margin
     if not all(math.isfinite(value) for value in (acceptance_min, acceptance_max, margin)):
         raise ValueError("验收范围和 margin 必须是有限数")
     if margin < 0.0:
@@ -359,7 +472,7 @@ def joint_min_max_home(args: argparse.Namespace) -> int:
     return 0
 
 
-def gripper_open_close(args: argparse.Namespace) -> int:
+def gripper_open_close(args: Args) -> int:
     _require_real_execute(args, "夹爪运动")
     if args.gripper_speed <= 0.0 or args.gripper_force <= 0.0:
         raise ValueError("gripper-speed 和 gripper-force 必须大于 0")
@@ -419,7 +532,7 @@ def gripper_open_close(args: argparse.Namespace) -> int:
     return 0
 
 
-def safety_stop(args: argparse.Namespace) -> int:
+def safety_stop(args: Args) -> int:
     _require_real_execute(args, "软件 stop 测试")
     if (args.max_offset <= 0.0 or not math.isfinite(args.offset)
             or abs(args.offset) > args.max_offset):
@@ -462,7 +575,7 @@ def safety_stop(args: argparse.Namespace) -> int:
     return 0
 
 
-def observe_safety(args: argparse.Namespace) -> int:
+def observe_safety(args: Args) -> int:
     """Observe an operator-triggered stop/error/disconnect without commanding motion."""
     if args.duration <= 0.0 or args.period <= 0.0:
         raise ValueError("duration 和 period 必须大于 0")
@@ -505,7 +618,7 @@ def observe_safety(args: argparse.Namespace) -> int:
     return 0
 
 
-def recover(args: argparse.Namespace) -> int:
+def recover(args: Args) -> int:
     _require_real_execute(args, "异常恢复")
     backend = _backend(args)
     recorder = _recorder(args)
@@ -522,11 +635,11 @@ def recover(args: argparse.Namespace) -> int:
     return 0
 
 
-def run_node(args: argparse.Namespace) -> int:
+def run_node(args: Args) -> int:
     if args.config:
-        from .node import build_driver_from_config, load_robot_config
+        from .config import build_driver_from_config, load_config
 
-        config = load_robot_config(args.config)
+        config = load_config(args.config)
         backend_name = config.get("backend", (config.get("robot", {}) or {}).get("backend", "fake"))
         if backend_name == "franky" and not args.execute:
             raise SystemExit("CLI 启动 Franky Dora 节点必须显式添加 --execute")
@@ -543,104 +656,284 @@ def run_node(args: argparse.Namespace) -> int:
         driver.disconnect()
 
 
-def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="robots-franka-fr3")
-    sub = p.add_subparsers(dest="command", required=True)
-    for name, func in (("read-state", read_state), ("move-single-joint", move_single_joint),
-                       ("joint-min-max-home", joint_min_max_home), ("gripper-open-close", gripper_open_close),
-                       ("safety-stop", safety_stop), ("observe-safety", observe_safety),
-                       ("recover", recover), ("run", run_node)):
-        q = sub.add_parser(name)
-        q.set_defaults(func=func, backend="fake", ip="172.16.0.2", dynamics_factor=0.05,
-                       max_step_rad=0.05, period=0.05, no_homing=False, margin=0.05,
-                       only_read=False, dry_run=False, debug=False,
-                       gripper_server_version=None)
-        q.add_argument("--backend", choices=("fake", "franky"), help="默认 fake；真机显式选 franky")
-        q.add_argument("--ip", help="FR3 FCI IP")
-        q.add_argument("--dynamics-factor", type=float, help="Franky 全局 dynamics factor")
-        q.add_argument("--max-step-rad", type=float, help="单个软件 waypoint 最大步长")
-        q.add_argument("--period", type=float, help="状态/命令检查周期（秒）")
-        q.add_argument("--debug", action="store_true")
-        q.add_argument("--gripper-server-version", type=int,
-                       help="可选 Franka Hand server version 检查；与 Robot Server wheel 版本不同")
-        q.add_argument("--gripper-speed", type=float, default=0.03)
-        q.add_argument("--gripper-force", type=float, default=50.0)
-        q.add_argument("--log", help="可选 JSONL 验收日志路径")
-
-    read = sub.choices["read-state"]
-    read.add_argument("--samples", type=int, default=10)
-    read.add_argument("--max-age", type=float, default=0.5, help="最大状态年龄（秒）")
-    read.add_argument("--max-read-ms", type=float, default=500.0, help="单次 SDK 读取最大耗时")
-
-    move = sub.choices["move-single-joint"]
-    move.add_argument("joint", choices=ARM_JOINT_ORDER)
-    move.add_argument("--offset", type=float, default=0.01)
-    move.add_argument("--max-offset", type=float, default=0.05,
-                      help="现场单关节测试允许的最大绝对偏移")
-    move.add_argument("--timeout", type=float, default=10.0)
-    move.add_argument("--tolerance", type=float, default=0.002)
-    move.add_argument("--execute", action="store_true", help="确认现场安全条件并允许真机运动")
-
-    sweep = sub.choices["joint-min-max-home"]
-    sweep.add_argument("joint", choices=ARM_JOINT_ORDER,
-                       help="强制每次只验收一个关节")
-    sweep.add_argument("--acceptance-min", type=float, required=True,
-                       help="现场批准的验收下界（rad），不是机械限位")
-    sweep.add_argument("--acceptance-max", type=float, required=True,
-                       help="现场批准的验收上界（rad），不是机械限位")
-    sweep.add_argument("--margin", type=float, default=0.1,
-                       help="验收目标与官方机械限位的最小间隔（rad）")
-    sweep.add_argument("--home-rad", type=float, nargs=7, metavar=("Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7"),
-                       help="现场批准的 7 轴 home；默认使用 contract.HOME_POSITION")
-    sweep.add_argument("--timeout", type=float, default=30.0, help="每个 waypoint 超时")
-    sweep.add_argument("--tolerance", type=float, default=0.003)
-    sweep.add_argument("--retries", type=int, default=2,
-                       help="每个 phase 失败后的额外尝试次数")
-    sweep.add_argument("--retry-delay", type=float, default=1.0,
-                       help="重建连接并重试前等待秒数")
-    sweep.add_argument("--recover-on-retry", action=argparse.BooleanOptionalAction, default=True,
-                       help="检测到当前 Franka 错误时，在重试前调用 automatic recovery（默认开启）")
-    sweep.add_argument("--recovery-delay", type=float, default=1.0,
-                       help="automatic recovery 后等待秒数")
-    sweep.add_argument("--dry-run", action="store_true")
-    sweep.add_argument("--execute", action="store_true", help="确认现场安全条件并允许真机运动")
-
-    gripper = sub.choices["gripper-open-close"]
-    gripper.add_argument("--width-tolerance", type=float, default=0.003)
-    gripper.add_argument("--grasp-width", type=float,
-                         help="可选夹持目标总开口（m）；提供后才执行 grasp")
-    gripper.add_argument("--expect-grasp", choices=("none", "success", "failure"), default="none")
-    gripper.add_argument("--hold-seconds", type=float, default=2.0)
-    gripper.add_argument("--drop-threshold", type=float, default=0.002,
-                         help="保持期间宽度漂移告警阈值（m）")
-    gripper.add_argument("--execute", action="store_true", help="确认现场安全条件并允许真机夹爪运动")
-
-    stop = sub.choices["safety-stop"]
-    stop.add_argument("--joint", choices=ARM_JOINT_ORDER, default="fr3v2_joint1")
-    stop.add_argument("--offset", type=float, default=0.03)
-    stop.add_argument("--max-offset", type=float, default=0.05)
-    stop.add_argument("--stop-after", type=float, default=0.2)
-    stop.add_argument("--settle-seconds", type=float, default=0.5)
-    stop.add_argument("--execute", action="store_true", help="确认现场安全条件并允许真机 stop 测试")
-
-    observe = sub.choices["observe-safety"]
-    observe.add_argument("--event", choices=("user-stop", "external-estop", "disconnect", "fci-error"),
-                         required=True)
-    observe.add_argument("--duration", type=float, default=30.0)
-
-    recovery = sub.choices["recover"]
-    recovery.add_argument("--execute", action="store_true",
-                          help="确认故障源已移除并允许调用自动恢复")
-
-    run = sub.choices["run"]
-    run.add_argument("--no-homing", action="store_true",
-                                    help="启动 Dora 节点时跳过 Hand homing")
-    run.add_argument("--config", help="与独立 Dora 节点共用的 robot YAML")
-    run.add_argument("--execute", action="store_true",
-                     help="使用 Franky backend 时额外确认允许真机运行")
-    return p
+BACKEND_OPTION = typer.Option("fake", "--backend", help="默认 fake；真机显式选 franky")
+IP_OPTION = typer.Option("172.16.0.2", "--ip", help="FR3 FCI IP")
+DYNAMICS_OPTION = typer.Option(0.05, "--dynamics-factor", help="Franky 全局 dynamics factor")
+STEP_OPTION = typer.Option(0.05, "--max-step-rad", help="单个软件 waypoint 最大步长")
+PERIOD_OPTION = typer.Option(0.05, "--period", help="状态/命令检查周期（秒）")
+DEBUG_OPTION = typer.Option(False, "--debug")
+GRIPPER_VERSION_OPTION = typer.Option(
+    None, "--gripper-server-version",
+    help="可选 Franka Hand server version 检查；与 Robot Server wheel 版本不同")
+GRIPPER_SPEED_OPTION = typer.Option(0.03, "--gripper-speed")
+GRIPPER_FORCE_OPTION = typer.Option(50.0, "--gripper-force")
+LOG_OPTION = typer.Option(None, "--log", help="可选 JSONL 验收日志路径")
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = parser().parse_args(argv)
-    return int(args.func(args))
+@app.command("read-state")
+def cmd_read_state(
+    backend: str = BACKEND_OPTION,
+    ip: str = IP_OPTION,
+    dynamics_factor: float = DYNAMICS_OPTION,
+    max_step_rad: float = STEP_OPTION,
+    period: float = PERIOD_OPTION,
+    debug: bool = DEBUG_OPTION,
+    gripper_server_version: int | None = GRIPPER_VERSION_OPTION,
+    gripper_speed: float = GRIPPER_SPEED_OPTION,
+    gripper_force: float = GRIPPER_FORCE_OPTION,
+    log: str | None = LOG_OPTION,
+    samples: int = typer.Option(10, "--samples"),
+    max_age: float = typer.Option(0.5, "--max-age", help="最大状态年龄（秒）"),
+    max_read_ms: float = typer.Option(500.0, "--max-read-ms", help="单次 SDK 读取最大耗时"),
+) -> None:
+    """只读状态检查；不启动运动 worker、不使能夹爪 homing。"""
+    _validate_backend(backend)
+    sys.exit(read_state(_common_args(
+        backend=backend, ip=ip, dynamics_factor=dynamics_factor,
+        max_step_rad=max_step_rad, period=period, debug=debug,
+        gripper_server_version=gripper_server_version, gripper_speed=gripper_speed,
+        gripper_force=gripper_force, log=log,
+        samples=samples, max_age=max_age, max_read_ms=max_read_ms,
+    )))
+
+
+@app.command("move-single-joint")
+def cmd_move_single_joint(
+    joint: str = typer.Argument(..., help="arm 关节名（fr3v2_joint1..7）"),
+    backend: str = BACKEND_OPTION,
+    ip: str = IP_OPTION,
+    dynamics_factor: float = DYNAMICS_OPTION,
+    max_step_rad: float = STEP_OPTION,
+    period: float = PERIOD_OPTION,
+    debug: bool = DEBUG_OPTION,
+    gripper_server_version: int | None = GRIPPER_VERSION_OPTION,
+    gripper_speed: float = GRIPPER_SPEED_OPTION,
+    gripper_force: float = GRIPPER_FORCE_OPTION,
+    log: str | None = LOG_OPTION,
+    offset: float = typer.Option(0.01, "--offset"),
+    max_offset: float = typer.Option(0.05, "--max-offset",
+                                     help="现场单关节测试允许的最大绝对偏移"),
+    timeout: float = typer.Option(10.0, "--timeout"),
+    tolerance: float = typer.Option(0.002, "--tolerance"),
+    execute: bool = typer.Option(False, "--execute", help="确认现场安全条件并允许真机运动"),
+) -> None:
+    """单关节往返运动测试（出去再回来，不触碰夹爪）。"""
+    _validate_backend(backend)
+    _validate_joint_name(joint)
+    sys.exit(move_single_joint(_common_args(
+        backend=backend, ip=ip, dynamics_factor=dynamics_factor,
+        max_step_rad=max_step_rad, period=period, debug=debug,
+        gripper_server_version=gripper_server_version, gripper_speed=gripper_speed,
+        gripper_force=gripper_force, log=log,
+        joint=joint, offset=offset, max_offset=max_offset, timeout=timeout,
+        tolerance=tolerance, execute=execute,
+    )))
+
+
+@app.command("joint-min-max-home")
+def cmd_joint_min_max_home(
+    joint: str = typer.Argument(..., help="强制每次只验收一个关节"),
+    backend: str = BACKEND_OPTION,
+    ip: str = IP_OPTION,
+    dynamics_factor: float = DYNAMICS_OPTION,
+    max_step_rad: float = STEP_OPTION,
+    period: float = PERIOD_OPTION,
+    debug: bool = DEBUG_OPTION,
+    gripper_server_version: int | None = GRIPPER_VERSION_OPTION,
+    gripper_speed: float = GRIPPER_SPEED_OPTION,
+    gripper_force: float = GRIPPER_FORCE_OPTION,
+    log: str | None = LOG_OPTION,
+    acceptance_min: float = typer.Option(..., "--acceptance-min",
+                                         help="现场批准的验收下界（rad），不是机械限位"),
+    acceptance_max: float = typer.Option(..., "--acceptance-max",
+                                         help="现场批准的验收上界（rad），不是机械限位"),
+    margin: float = typer.Option(0.1, "--margin",
+                                 help="验收目标与官方机械限位的最小间隔（rad）"),
+    home_rad: list[float] | None = typer.Option(
+        None, "--home-rad",
+        help="现场批准的 7 轴 home（可重复 7 次传入）；默认使用 contract.HOME_POSITION"),
+    timeout: float = typer.Option(30.0, "--timeout", help="每个 waypoint 超时"),
+    tolerance: float = typer.Option(0.003, "--tolerance"),
+    retries: int = typer.Option(2, "--retries", help="每个 phase 失败后的额外尝试次数"),
+    retry_delay: float = typer.Option(1.0, "--retry-delay",
+                                      help="重建连接并重试前等待秒数"),
+    recover_on_retry: bool = typer.Option(
+        True, "--recover-on-retry/--no-recover-on-retry",
+        help="检测到当前 Franka 错误时，在重试前调用 automatic recovery（默认开启）"),
+    recovery_delay: float = typer.Option(1.0, "--recovery-delay",
+                                         help="automatic recovery 后等待秒数"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    execute: bool = typer.Option(False, "--execute", help="确认现场安全条件并允许真机运动"),
+) -> None:
+    """单轴验收：min → home → max → home，带错误恢复重试。"""
+    _validate_backend(backend)
+    _validate_joint_name(joint)
+    sys.exit(joint_min_max_home(_common_args(
+        backend=backend, ip=ip, dynamics_factor=dynamics_factor,
+        max_step_rad=max_step_rad, period=period, debug=debug,
+        gripper_server_version=gripper_server_version, gripper_speed=gripper_speed,
+        gripper_force=gripper_force, log=log,
+        joint=joint, acceptance_min=acceptance_min, acceptance_max=acceptance_max,
+        margin=margin, home_rad=home_rad, timeout=timeout, tolerance=tolerance,
+        retries=retries, retry_delay=retry_delay, recover_on_retry=recover_on_retry,
+        recovery_delay=recovery_delay, dry_run=dry_run, execute=execute,
+    )))
+
+
+@app.command("gripper-open-close")
+def cmd_gripper_open_close(
+    backend: str = BACKEND_OPTION,
+    ip: str = IP_OPTION,
+    dynamics_factor: float = DYNAMICS_OPTION,
+    max_step_rad: float = STEP_OPTION,
+    period: float = PERIOD_OPTION,
+    debug: bool = DEBUG_OPTION,
+    gripper_server_version: int | None = GRIPPER_VERSION_OPTION,
+    gripper_speed: float = GRIPPER_SPEED_OPTION,
+    gripper_force: float = GRIPPER_FORCE_OPTION,
+    log: str | None = LOG_OPTION,
+    width_tolerance: float = typer.Option(0.003, "--width-tolerance"),
+    grasp_width: float | None = typer.Option(
+        None, "--grasp-width", help="可选夹持目标总开口（m）；提供后才执行 grasp"),
+    expect_grasp: str = typer.Option("none", "--expect-grasp"),
+    hold_seconds: float = typer.Option(2.0, "--hold-seconds"),
+    drop_threshold: float = typer.Option(0.002, "--drop-threshold",
+                                         help="保持期间宽度漂移告警阈值（m）"),
+    execute: bool = typer.Option(False, "--execute", help="确认现场安全条件并允许真机夹爪运动"),
+) -> None:
+    """夹爪 homing + 开合循环（open/half/closed/reopen），可选 grasp 保持测试。"""
+    _validate_backend(backend)
+    if expect_grasp not in ("none", "success", "failure"):
+        raise typer.BadParameter("expect-grasp 必须是 none、success 或 failure")
+    sys.exit(gripper_open_close(_common_args(
+        backend=backend, ip=ip, dynamics_factor=dynamics_factor,
+        max_step_rad=max_step_rad, period=period, debug=debug,
+        gripper_server_version=gripper_server_version, gripper_speed=gripper_speed,
+        gripper_force=gripper_force, log=log,
+        width_tolerance=width_tolerance, grasp_width=grasp_width,
+        expect_grasp=expect_grasp, hold_seconds=hold_seconds,
+        drop_threshold=drop_threshold, execute=execute,
+    )))
+
+
+@app.command("safety-stop")
+def cmd_safety_stop(
+    backend: str = BACKEND_OPTION,
+    ip: str = IP_OPTION,
+    dynamics_factor: float = DYNAMICS_OPTION,
+    max_step_rad: float = STEP_OPTION,
+    period: float = PERIOD_OPTION,
+    debug: bool = DEBUG_OPTION,
+    gripper_server_version: int | None = GRIPPER_VERSION_OPTION,
+    gripper_speed: float = GRIPPER_SPEED_OPTION,
+    gripper_force: float = GRIPPER_FORCE_OPTION,
+    log: str | None = LOG_OPTION,
+    joint: str = typer.Option("fr3v2_joint1", "--joint"),
+    offset: float = typer.Option(0.03, "--offset"),
+    max_offset: float = typer.Option(0.05, "--max-offset"),
+    stop_after: float = typer.Option(0.2, "--stop-after"),
+    settle_seconds: float = typer.Option(0.5, "--settle-seconds"),
+    execute: bool = typer.Option(False, "--execute", help="确认现场安全条件并允许真机 stop 测试"),
+) -> None:
+    """运动中途软件 stop 测试（不替代 Desk/外部急停）。"""
+    _validate_backend(backend)
+    _validate_joint_name(joint)
+    sys.exit(safety_stop(_common_args(
+        backend=backend, ip=ip, dynamics_factor=dynamics_factor,
+        max_step_rad=max_step_rad, period=period, debug=debug,
+        gripper_server_version=gripper_server_version, gripper_speed=gripper_speed,
+        gripper_force=gripper_force, log=log,
+        joint=joint, offset=offset, max_offset=max_offset, stop_after=stop_after,
+        settle_seconds=settle_seconds, execute=execute,
+    )))
+
+
+@app.command("observe-safety")
+def cmd_observe_safety(
+    backend: str = BACKEND_OPTION,
+    ip: str = IP_OPTION,
+    dynamics_factor: float = DYNAMICS_OPTION,
+    max_step_rad: float = STEP_OPTION,
+    period: float = PERIOD_OPTION,
+    debug: bool = DEBUG_OPTION,
+    gripper_server_version: int | None = GRIPPER_VERSION_OPTION,
+    gripper_speed: float = GRIPPER_SPEED_OPTION,
+    gripper_force: float = GRIPPER_FORCE_OPTION,
+    log: str | None = LOG_OPTION,
+    event: str = typer.Option(..., "--event",
+                              help="user-stop / external-estop / disconnect / fci-error"),
+    duration: float = typer.Option(30.0, "--duration"),
+) -> None:
+    """观察操作员触发的 stop/error/disconnect，期间不下发任何运动命令。"""
+    _validate_backend(backend)
+    if event not in ("user-stop", "external-estop", "disconnect", "fci-error"):
+        raise typer.BadParameter("event 必须是 user-stop、external-estop、disconnect 或 fci-error")
+    sys.exit(observe_safety(_common_args(
+        backend=backend, ip=ip, dynamics_factor=dynamics_factor,
+        max_step_rad=max_step_rad, period=period, debug=debug,
+        gripper_server_version=gripper_server_version, gripper_speed=gripper_speed,
+        gripper_force=gripper_force, log=log,
+        event=event, duration=duration,
+    )))
+
+
+@app.command("recover")
+def cmd_recover(
+    backend: str = BACKEND_OPTION,
+    ip: str = IP_OPTION,
+    dynamics_factor: float = DYNAMICS_OPTION,
+    max_step_rad: float = STEP_OPTION,
+    period: float = PERIOD_OPTION,
+    debug: bool = DEBUG_OPTION,
+    gripper_server_version: int | None = GRIPPER_VERSION_OPTION,
+    gripper_speed: float = GRIPPER_SPEED_OPTION,
+    gripper_force: float = GRIPPER_FORCE_OPTION,
+    log: str | None = LOG_OPTION,
+    execute: bool = typer.Option(False, "--execute",
+                                 help="确认故障源已移除并允许调用自动恢复"),
+) -> None:
+    """Franky automatic error recovery。"""
+    _validate_backend(backend)
+    sys.exit(recover(_common_args(
+        backend=backend, ip=ip, dynamics_factor=dynamics_factor,
+        max_step_rad=max_step_rad, period=period, debug=debug,
+        gripper_server_version=gripper_server_version, gripper_speed=gripper_speed,
+        gripper_force=gripper_force, log=log,
+        execute=execute,
+    )))
+
+
+@app.command("run")
+def cmd_run(
+    backend: str = BACKEND_OPTION,
+    ip: str = IP_OPTION,
+    dynamics_factor: float = DYNAMICS_OPTION,
+    max_step_rad: float = STEP_OPTION,
+    period: float = PERIOD_OPTION,
+    debug: bool = DEBUG_OPTION,
+    gripper_server_version: int | None = GRIPPER_VERSION_OPTION,
+    gripper_speed: float = GRIPPER_SPEED_OPTION,
+    gripper_force: float = GRIPPER_FORCE_OPTION,
+    log: str | None = LOG_OPTION,
+    no_homing: bool = typer.Option(False, "--no-homing", help="启动 Dora 节点时跳过 Hand homing"),
+    config: str | None = typer.Option(None, "--config", help="与独立 Dora 节点共用的 robot YAML"),
+    execute: bool = typer.Option(False, "--execute",
+                                 help="使用 Franky backend 时额外确认允许真机运行"),
+) -> None:
+    """运行 FR3 Dora 节点（与独立节点共用 robot YAML 时用 --config）。"""
+    _validate_backend(backend)
+    sys.exit(run_node(_common_args(
+        backend=backend, ip=ip, dynamics_factor=dynamics_factor,
+        max_step_rad=max_step_rad, period=period, debug=debug,
+        gripper_server_version=gripper_server_version, gripper_speed=gripper_speed,
+        gripper_force=gripper_force, log=log,
+        no_homing=no_homing, config=config, execute=execute,
+    )))
+
+
+def main() -> None:
+    app()
+
+
+if __name__ == "__main__":
+    main()

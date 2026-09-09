@@ -121,7 +121,7 @@ uv run robots-franka-fr3 joint-min-max-home fr3v2_joint1 \
 ```
 
 其余六轴使用表中对应值逐条执行。每个 waypoint 记录 target、actual、耗时和 errors；
-每个 `min/home/max/home` phase 失败后会 stop、断开旧 driver、等待、重建连接，然后从
+每个 `min→home→max→home` phase 失败后会 stop、断开旧 driver、等待、重建连接，然后从
 重新读取的当前位置继续同一 phase；已完成的 phase 不重复。默认额外重试 2 次，检测到
 当前 Franka 错误时默认执行 automatic recovery。可用 `--retries 0` 禁止重试，或用
 `--no-recover-on-retry` 禁止自动恢复。达到重试上限后才停止，不会跳过失败目标进入下一项。

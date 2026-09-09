@@ -165,3 +165,12 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run pytest -q \
   `ROBOT_ASSET_PIPELINE_ROOT` 显式指定外部工具目录。源码型 Forge Runtime 已位于
   本仓库根目录 `forge_runtime/`，Dora 端到端 workflow 已完成启动、消息交换和停止验证。
 - 不包含 Robotiq 2F85、相机或 RealSense 资产。
+
+## 许可证
+
+本仓自有代码、配置和文档采用
+[Apache License 2.0](LICENSE)。机器人描述资产源自
+`franka_description`（Apache-2.0，Franka Robotics GmbH，BSD 例外条款见
+[NOTICE](NOTICE)），运行时依赖 `franky-control` 为 MIT；完整归属见
+[NOTICE](NOTICE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+Apache-2.0 不授予 Franka 商标的使用权。

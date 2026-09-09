@@ -8,13 +8,14 @@ import threading
 import time
 from collections.abc import Mapping
 
+from forge_common import get_logger
 from forge_msgs import JointCommand, JointState
 from forge_robot import BaseRobotDriver
 
 from .backend import BackendState, DynamicsFactors, DynamicsLimits, FakeBackend, RobotBackend
 from .contract import ACTUATOR_ORDER, ARM_JOINT_ORDER, GRIPPER_MAX_WIDTH_M, load_joint_limits
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FrankaDriverError(RuntimeError):
