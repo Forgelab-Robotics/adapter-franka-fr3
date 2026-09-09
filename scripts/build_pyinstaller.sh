@@ -9,7 +9,7 @@ BUILD_ENV="${ROOT}/.venv_build"
 DIST_DIR="${ROOT}/dist"
 WORK_DIR="${ROOT}/build/pyinstaller"
 SPEC_FILE="${SCRIPT_DIR}/franka_fr3.spec"
-DIST_FILE="${DIST_DIR}/franka-fr3"
+DIST_FILE="${DIST_DIR}/robots_franka_fr3"
 
 cleanup() {
   rm -rf "${BUILD_ENV}"
@@ -44,7 +44,7 @@ echo "==> [franka-fr3] 验证可执行文件帮助信息..."
 
 echo "==> [franka-fr3] 验证可执行文件版本..."
 VERSION_OUTPUT="$("${DIST_FILE}" --version)"
-if [[ "${VERSION_OUTPUT}" != "franka-fr3 0.1.0" ]]; then
+if [[ "${VERSION_OUTPUT}" != "robots_franka_fr3 0.1.1" ]]; then
   echo "ERROR: 非预期版本输出：${VERSION_OUTPUT}" >&2
   exit 1
 fi

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
@@ -18,6 +19,32 @@ class ConfigTest(unittest.TestCase):
         config = load_config(ROOT / "config/robot.example.yaml")
         self.assertEqual(config["robot"]["backend"], "fake")
         self.assertFalse(config["control"]["allow_real_motion"])
+
+    def test_load_config_expands_env_vars_in_strings(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "robot.yaml"
+            path.write_text(
+                "robot:\n  backend: fake\n  ip: ${FRANKA_ROBOT_IP}\n"
+                "control:\n  worker_period_s: 0.02\n"
+            )
+            with mock.patch.dict(
+                "os.environ", {"FRANKA_ROBOT_IP": "172.16.0.2"}, clear=False
+            ):
+                config = load_config(path)
+            self.assertEqual(config["robot"]["ip"], "172.16.0.2")
+            self.assertIsInstance(config["control"]["worker_period_s"], float)
+
+    def test_unknown_env_var_stays_literal(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "robot.yaml"
+            path.write_text("robot:\n  backend: fake\n  ip: ${FRANKA_ROBOT_IP}\n")
+            with mock.patch.dict("os.environ", {}, clear=True):
+                config = load_config(path)
+            self.assertEqual(config["robot"]["ip"], "${FRANKA_ROBOT_IP}")
 
     def test_example_matches_contract(self) -> None:
         config = yaml.safe_load((ROOT / "config/robot.example.yaml").read_text())

@@ -6,11 +6,11 @@ on:
       ref:
         description: Git ref to build
         required: true
-        default: v0.1.0
+        default: v0.1.1
       version:
         description: franka-fr3 version without the v prefix
         required: true
-        default: 0.1.0
+        default: 0.1.1
 
 permissions:
   contents: read
@@ -53,8 +53,8 @@ jobs:
       - name: Verify and package binary
         run: |
           test "${{ inputs.ref }}" = "v${RELEASE_VERSION}"
-          test "$(./dist/franka-fr3 --version)" = "franka-fr3 ${RELEASE_VERSION}"
-          file ./dist/franka-fr3
+          test "$(./dist/robots_franka_fr3 --version)" = "robots_franka_fr3 ${RELEASE_VERSION}"
+          file ./dist/robots_franka_fr3
           ldd --version | sed -n '1p'
           archive="forge-franka-fr3-v${RELEASE_VERSION}-ubuntu20.04-x86_64.tar.gz"
           tar \
@@ -65,9 +65,9 @@ jobs:
             --numeric-owner \
             -C dist \
             -czf "${archive}" \
-            franka-fr3
+            robots_franka_fr3
           sha256sum "${archive}" > "${archive}.sha256"
-          test "$(tar -tzf "${archive}")" = "franka-fr3"
+          test "$(tar -tzf "${archive}")" = "robots_franka_fr3"
           sha256sum --check "${archive}.sha256"
 
       - uses: actions/upload-artifact@v6

@@ -38,7 +38,7 @@ class TyperWiringTest(unittest.TestCase):
     def test_version_flag(self) -> None:
         result = runner.invoke(app, ["--version"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("franka-fr3 0.1.0", result.output)
+        self.assertIn("robots_franka_fr3 0.1.1", result.output)
 
     def test_read_state_end_to_end_via_typer(self) -> None:
         result = runner.invoke(app, ["read-state", "--samples", "1", "--period", "0"])

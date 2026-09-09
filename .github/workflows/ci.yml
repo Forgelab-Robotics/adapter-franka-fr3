@@ -27,8 +27,8 @@ jobs:
       - name: Verify CLI
         run: |
           uv run robots-franka-fr3 --help
-          test "$(uv run robots-franka-fr3 --version)" = "franka-fr3 0.1.0"
-          test "$(uv run python -m robots_franka_fr3 --version)" = "franka-fr3 0.1.0"
+          test "$(uv run robots-franka-fr3 --version)" = "robots_franka_fr3 0.1.1"
+          test "$(uv run python -m robots_franka_fr3 --version)" = "robots_franka_fr3 0.1.1"
           uv run python src/robots_franka_fr3/node.py --help
       - name: Import public Forge packages
         run: uv run python -c "import forge_common, forge_msgs, forge_robot, robots_franka_fr3"

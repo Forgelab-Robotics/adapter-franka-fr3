@@ -21,7 +21,7 @@ from .driver import FrankaFR3Driver
 
 def _version_callback(value: bool) -> None:
     if value:
-        typer.echo(f"franka-fr3 {__version__}")
+        typer.echo(f"robots_franka_fr3 {__version__}")
         raise typer.Exit()
 
 
@@ -650,8 +650,11 @@ def run_node(args: Args) -> int:
         driver = _driver(args, position_command_semantics="relative")
     driver.connect()
     try:
-        from forge_robot.node_runner import run_dora_robot_node
-        return run_dora_robot_node(driver, joint_order=driver.joint_order, debug=args.debug)
+        # 使用 stop-aware 节点循环：通用 run_dora_robot_node 只处理 action，
+        # 无法观察轨迹/夹爪 controller 的 cancel；末端 Skill 若只停止发送
+        # waypoint，Franky 已接收的异步 JointMotion 仍可能继续运行。
+        from .node import run_franka_dora_node
+        return run_franka_dora_node(driver, debug=args.debug)
     finally:
         driver.disconnect()
 

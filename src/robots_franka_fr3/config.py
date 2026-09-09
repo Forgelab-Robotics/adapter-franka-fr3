@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -11,12 +12,23 @@ from robots_franka_fr3.backend import DynamicsFactors, FakeBackend, FrankyBacken
 from robots_franka_fr3.driver import FrankaFR3Driver
 
 
+def _expand_env(value: Any) -> Any:
+    """递归展开字符串值中的 ${VAR}（未知变量保持原样）。"""
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    if isinstance(value, list):
+        return [_expand_env(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _expand_env(item) for key, item in value.items()}
+    return value
+
+
 def load_config(path: str | Path) -> dict[str, Any]:
-    """读取 robot YAML；顶层必须是 mapping。"""
+    """读取 robot YAML；顶层必须是 mapping。字符串值支持 ${ENV_VAR} 展开。"""
     config = yaml.safe_load(Path(path).read_text()) or {}
     if not isinstance(config, dict):
         raise ValueError("robot config 顶层必须是 mapping")
-    return config
+    return _expand_env(config)
 
 
 def _value(config: Mapping[str, Any], section: Mapping[str, Any], key: str, default: Any) -> Any:

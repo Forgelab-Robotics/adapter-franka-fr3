@@ -57,7 +57,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="franka-fr3",
+    name="robots_franka_fr3",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
