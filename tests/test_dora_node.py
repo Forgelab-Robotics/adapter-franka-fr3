@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 import unittest
 from unittest.mock import patch
@@ -14,12 +15,19 @@ from robots_franka_fr3.node import run_franka_dora_node
 
 runner = CliRunner()
 
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _plain(text: str) -> str:
+    """去除 rich/typer 在 FORCE_COLOR（CI）环境下注入的 ANSI 样式码。"""
+    return _ANSI_RE.sub("", text)
+
 
 class NodeCliTest(unittest.TestCase):
     def test_help_documents_config_option(self) -> None:
         result = runner.invoke(node_app, ["--help"])
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("--config", result.output)
+        self.assertIn("--config", _plain(result.output))
 
     def test_missing_config_is_usage_error(self) -> None:
         result = runner.invoke(node_app, [])
