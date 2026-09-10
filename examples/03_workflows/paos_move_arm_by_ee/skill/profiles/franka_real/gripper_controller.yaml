@@ -4,7 +4,10 @@ min_position: 0.0
 max_position: 0.08
 control_period_ms: 20
 feedback_timeout_ms: 500
-goal_tolerance: 0.002
+# 0.08 m / 0.02 m/s = 4 s 全行程；stall_timeout 必须覆盖全行程，否则运动中
+# 的夹爪会被误判 STALLED 并回退到中途位置（2026-09-10 修复）。
+# goal_tolerance 放宽到 3 mm：Franka Hand 完全闭合时宽度读数有 1~2 mm 抖动。
+goal_tolerance: 0.003
 stall_velocity_threshold: 0.0001
 stall_timeout_ms: 6000
 allow_stalling: false

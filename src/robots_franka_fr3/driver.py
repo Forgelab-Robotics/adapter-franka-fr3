@@ -6,6 +6,7 @@ import logging
 import math
 import threading
 import time
+from collections import deque
 from collections.abc import Mapping
 
 from forge_common import get_logger
@@ -16,6 +17,10 @@ from .backend import BackendState, DynamicsFactors, DynamicsLimits, FakeBackend,
 from .contract import ACTUATOR_ORDER, ARM_JOINT_ORDER, GRIPPER_MAX_WIDTH_M, load_joint_limits
 
 logger = get_logger(__name__)
+
+# Franka Hand 编码器静止时的量化死区；窗口差分后低于该值的位移视为静止，
+# 避免上层 stall 检测把量化噪声当作持续运动。
+_GRIPPER_VELOCITY_DEADBAND_M = 5e-6
 
 
 class FrankaDriverError(RuntimeError):
@@ -78,6 +83,7 @@ class FrankaFR3Driver(BaseRobotDriver):
         max_step_rad: float = 0.05,
         gripper_speed: float = 0.03,
         gripper_force: float = 50.0,
+        gripper_velocity_window: float = 0.1,
         require_homing: bool = True,
         position_command_semantics: str = "relative",
         auto_connect: bool = False,
@@ -99,6 +105,9 @@ class FrankaFR3Driver(BaseRobotDriver):
         self.max_step_rad = self._positive("max_step_rad", max_step_rad)
         self.gripper_speed = self._positive("gripper_speed", gripper_speed)
         self.gripper_force = self._positive("gripper_force", gripper_force)
+        self.gripper_velocity_window = self._positive(
+            "gripper_velocity_window", gripper_velocity_window
+        )
         self.require_homing = bool(require_homing)
         if position_command_semantics not in ("relative", "absolute"):
             raise ValueError(
@@ -127,6 +136,9 @@ class FrankaFR3Driver(BaseRobotDriver):
         self._last_robot_time: float | None = None
         self._source_advanced_at = 0.0
         self._gripper_max_width = GRIPPER_MAX_WIDTH_M
+        # Franka Hand 的 GripperState 不反馈速度；用 (timestamp, width) 滑动
+        # 窗口差分估计，供上层 stall 检测使用。
+        self._gripper_width_history: deque[tuple[float, float]] = deque()
         self._dynamics_limits: DynamicsLimits | None = None
         self._validate_limit_margins()
         if auto_connect:
@@ -266,12 +278,14 @@ class FrankaFR3Driver(BaseRobotDriver):
         self._arm_active = self._gripper_active = False
         self._last_robot_time = None
         self._source_advanced_at = 0.0
+        self._gripper_width_history.clear()
 
     def _initialize_targets(self, state: BackendState, now: float) -> None:
         self._last_state = state
         fresh_position = list(state.position) + [state.gripper_width]
         self._reference = list(fresh_position)
         self._target = fresh_position
+        self._gripper_width_history.clear()
         self._arm_generation = self._gripper_generation = 0
         self._arm_dispatched = self._gripper_dispatched = 0
         self._arm_target_time = self._gripper_target_time = now
@@ -294,8 +308,31 @@ class FrankaFR3Driver(BaseRobotDriver):
             raise error from exc
         with self._condition:
             self._last_state = state
+            gripper_velocity = self._estimate_gripper_velocity_locked(state)
         return JointState(name=list(ACTUATOR_ORDER), position=list(state.position) + [state.gripper_width],
-                          velocity=list(state.velocity) + [0.0], effort=list(state.effort) + [0.0])
+                          velocity=list(state.velocity) + [gripper_velocity],
+                          effort=list(state.effort) + [0.0])
+
+    def _estimate_gripper_velocity_locked(self, state: BackendState) -> float:
+        """在 ``_condition`` 锁内用宽度滑动窗口差分估计夹爪总开口速度。
+
+        Franka Hand（FCI）不提供夹爪速度反馈；恒报 0 会让上层 controller
+        在 ``stall_timeout`` 后无条件把运动中的夹爪误判为 STALLED。窗口内
+        位移不超过量化死区时返回 0.0，避免噪声被当作持续运动。
+        """
+        history = self._gripper_width_history
+        now = state.timestamp
+        history.append((now, state.gripper_width))
+        while history and now - history[0][0] > self.gripper_velocity_window:
+            history.popleft()
+        oldest_time, oldest_width = history[0]
+        elapsed = now - oldest_time
+        if elapsed <= 0.0:
+            return 0.0
+        delta = state.gripper_width - oldest_width
+        if abs(delta) <= _GRIPPER_VELOCITY_DEADBAND_M:
+            return 0.0
+        return delta / elapsed
 
     def _read_and_validate_state(self, *, reset_source_clock: bool = False,
                                  allow_robot_errors: bool = False) -> BackendState:

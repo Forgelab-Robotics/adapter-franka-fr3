@@ -51,6 +51,30 @@ class DriverTest(unittest.TestCase):
         self.assertEqual(self.backend.command_history, [])
         self.assertEqual(self.backend.gripper_command_history[-1][0], "move")
 
+    def test_gripper_velocity_is_estimated_from_width_history(self) -> None:
+        self.driver.get_state()  # 基准样本：width=0.08 入历史。
+        self.backend.gripper_width = 0.06
+        state = self.driver.get_state()
+        self.assertLess(state.velocity[7], -0.001)  # 关闭方向为负。
+
+    def test_gripper_velocity_is_zero_when_width_is_constant(self) -> None:
+        self.driver.get_state()
+        self.assertEqual(self.driver.get_state().velocity[7], 0.0)
+
+    def test_gripper_velocity_window_expires_old_samples(self) -> None:
+        driver = FrankaFR3Driver(
+            backend=self.backend, require_homing=False,
+            gripper_velocity_window=0.05,
+        )
+        driver.connect()
+        try:
+            driver.get_state()
+            self.backend.gripper_width = 0.06
+            time.sleep(0.08)  # 超过窗口后旧样本出窗，速度回到 0。
+            self.assertEqual(driver.get_state().velocity[7], 0.0)
+        finally:
+            driver.disconnect()
+
     def test_invalid_action_rejected(self) -> None:
         with self.assertLogs("robots_franka_fr3.driver", level="ERROR") as captured:
             with self.assertRaises(ValueError):

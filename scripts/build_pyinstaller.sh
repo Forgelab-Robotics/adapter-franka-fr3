@@ -44,7 +44,7 @@ echo "==> [franka-fr3] 验证可执行文件帮助信息..."
 
 echo "==> [franka-fr3] 验证可执行文件版本..."
 VERSION_OUTPUT="$("${DIST_FILE}" --version)"
-if [[ "${VERSION_OUTPUT}" != "robots_franka_fr3 0.1.1" ]]; then
+if [[ "${VERSION_OUTPUT}" != "robots_franka_fr3 0.1.2" ]]; then
   echo "ERROR: 非预期版本输出：${VERSION_OUTPUT}" >&2
   exit 1
 fi
