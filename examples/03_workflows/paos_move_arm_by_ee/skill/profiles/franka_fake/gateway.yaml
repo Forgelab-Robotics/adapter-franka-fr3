@@ -67,16 +67,16 @@ tools:
           properties:
             x:
               type: number
-              minimum: -0.05
-              maximum: 0.05
+              minimum: -0.1
+              maximum: 0.1
             y:
               type: number
-              minimum: -0.05
-              maximum: 0.05
+              minimum: -0.1
+              maximum: 0.1
             z:
               type: number
-              minimum: -0.05
-              maximum: 0.05
+              minimum: -0.1
+              maximum: 0.1
         orientation_mode:
           enum:
           - preserve

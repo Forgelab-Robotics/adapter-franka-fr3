@@ -53,13 +53,14 @@ FR3 Dora 节点来自当前源码仓库，而不是不可审计的临时二进�
 
 ```bash
 export FRANKA_FR3_PROJECT="$(pwd)"  # 当前目录必须是 franka_fr3/
+export PHYAGENTOS_ROOT=../PhyAgentOS
 ```
 
 ## 1. 构建和安装
 
 ```bash
 cd franka_fr3
-examples/03_workflows/paos_move_arm_by_ee/build_skill_bundle.sh
+bash examples/03_workflows/paos_move_arm_by_ee/build_skill_bundle.sh
 
 PAOS_BIN=/path/to/paos
 "$PAOS_BIN" skill install \
@@ -136,7 +137,7 @@ export PAOS_FRANKA_REAL_ACK=I_UNDERSTAND_THIS_MOVES_FR3
 真机首次 Action 不能使用含糊的“测试一下”。由现场人员明确批准方向、坐标系和距离，
 建议从 base frame 单轴 **1～2 mm**、`velocity_scale=0.03`、
 `acceleration_scale=0.03` 开始。完成后立即核对 terminal result、实际姿态和视频，再决定
-是否继续。当前 schema 还强制：单次各平移分量不超过 5 cm、各旋转向量分量不超过约
+是否继续。当前 schema 还强制：单次各平移分量不超过 10 cm、各旋转向量分量不超过约
 10°、速度/加速度 scale 不超过 0.1、Hand 总开口不超过 0.08 m。
 
 停止：

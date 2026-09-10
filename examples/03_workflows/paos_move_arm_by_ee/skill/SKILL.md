@@ -181,7 +181,7 @@ For this bundle's `franka_fake` and `franka_real` profiles, live context must re
 - base-frame `forward`, `left`, and `up` as positive X, Y, and Z respectively.
 
 The real profile is a commissioning profile. Each relative translation component is
-bounded to `[-0.05, 0.05]` m, each local rotation-vector component to approximately
+bounded to `[-0.1, 0.1]` m, each local rotation-vector component to approximately
 `[-10, 10]` degrees, and motion velocity/acceleration scales to at most `0.1`. These
 schema bounds are not collision guarantees. Never split or repeat a larger request to
 circumvent them.

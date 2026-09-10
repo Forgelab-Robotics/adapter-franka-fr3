@@ -16,3 +16,5 @@ validation_output/*.log
 
 # PyInstaller 隔离构建环境
 .venv_build/
+
+validation_output/
