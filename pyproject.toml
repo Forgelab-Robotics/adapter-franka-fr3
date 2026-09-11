@@ -9,7 +9,7 @@ license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
 authors = [{ name = "PhyAgentOS Contributors" }]
 dependencies = [
   "dora-rs>=0.4.1",
-  "forge-common>=1.0.0,<2",
+  "forge-common>=1.0.0,<3",
   "forge-msgs>=1.0.0,<2",
   "forge-robot>=1.0.0,<2",
   "franky-control==2.0.0+libfranka.0.17.0",
