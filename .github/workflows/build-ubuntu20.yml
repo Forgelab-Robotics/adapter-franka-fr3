@@ -70,7 +70,7 @@ jobs:
           test "$(tar -tzf "${archive}")" = "robots_franka_fr3"
           sha256sum --check "${archive}.sha256"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: forge-franka-fr3-v${{ inputs.version }}-ubuntu20.04-x86_64
           path: |
